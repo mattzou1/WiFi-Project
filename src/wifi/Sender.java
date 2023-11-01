@@ -24,7 +24,7 @@ public class Sender implements Runnable {
 			}
 			else {
 				try {
-					Thread.sleep(1000);
+					Thread.sleep(500);
 				} 
 				catch (InterruptedException e) {
 					System.err.println("Error while putting thread to sleep");
