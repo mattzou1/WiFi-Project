@@ -1,5 +1,6 @@
 package wifi;
 import java.io.PrintWriter;
+import java.util.Stack;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import rf.RF;
@@ -15,7 +16,9 @@ public class LinkLayer implements Dot11Interface
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
 	private ArrayBlockingQueue<Packet> outgoing;
+	private Stack<Packet> incoming;
 	private Sender sender;
+	private Receiver receiver;
 
 	/**
 	 * Constructor takes a MAC address and the PrintWriter to which our output will
@@ -27,10 +30,13 @@ public class LinkLayer implements Dot11Interface
 		this.ourMAC = ourMAC;
 		this.output = output;      
 		this.outgoing =  new ArrayBlockingQueue<Packet>(10);
+		this.incoming = new Stack<Packet>();
 		theRF = new RF(null, null);
-		output.println("LinkLayer: Constructor ran.");
-		this.sender = new Sender(theRF, outgoing);
+		this.sender = new Sender(theRF, outgoing, output);
+		this.receiver = new Receiver(theRF, incoming, output);
 		(new Thread(sender)).start();
+		(new Thread(receiver)).start();
+		output.println("LinkLayer: Constructor ran.");
 	}
 
 	/**
@@ -49,9 +55,22 @@ public class LinkLayer implements Dot11Interface
 	 * the Transmission object.  See docs for full description.
 	 */
 	public int recv(Transmission t) {
-		output.println("LinkLayer: Pretending to block on recv()");
-		while(true); // <--- This is a REALLY bad way to wait.  Sleep a little each time through.
-		// return 0;
+		output.println("LinkLayer: Waiting for data...");
+	    while (incoming.isEmpty()) {
+	        // Sleep for a short period to avoid busy-waiting
+	        try {
+	            Thread.sleep(100); // Sleep for 100 milliseconds
+	        } catch (InterruptedException e) {
+	        	System.err.println("Error while putting thread to sleep");
+	        }
+	    }
+
+	    Packet packet = incoming.pop(); // Retrieve the first packet from the stack
+	    t.setDestAddr(packet.getDest());
+	    t.setSourceAddr(packet.getSource());
+	    t.setBuf(packet.getData());
+	    output.println("LinkLayer: Packet written to Transmission object");
+		return packet.getDataLength();
 	}
 
 	/**

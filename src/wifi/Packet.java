@@ -3,13 +3,15 @@ package wifi;
 public class Packet {
 
 	private byte[] frame;
+	private int dataLength;
 	
 	public Packet(byte[] frame) {
 		this.frame = frame;
+		this.dataLength = frame.length - 10;
 	}
 
 	public Packet(short ourMac, short dest, byte[] data, int len) {
-		int dataLength = Math.min(len, data.length);
+		this.dataLength = Math.min(len, data.length);
 		this.frame = new byte[dataLength + 10];
 
 		short frameType = 0;
@@ -42,9 +44,30 @@ public class Packet {
 		frame[dataLength + 9] = (byte) (crc & 0xFF);
 	}
 	
+	public short getDest() {
+		return (short)(((frame[2] & 0xFF) << 8) | (frame[3] & 0xFF));
+	}
+
+	public short getSource() {
+		return (short)(((frame[4] & 0xFF) << 8) | (frame[5] & 0xFF));
+	}
+
+	public byte[] getData() {
+		byte[] data = new byte[dataLength];
+	    for (int i = 0; i < dataLength; i++) {
+	        data[i] = frame[i + 6];
+	    }
+	    return data;
+	}
+	
+	public int getDataLength() {
+		return dataLength;
+	}
+	
 	public byte[] getFrame() {
 		return frame;
 	}
+	
 	
 	@Override
 	public String toString() {
@@ -74,6 +97,7 @@ public class Packet {
 
 		return crc;
 	}
+
 	
 //	public static void main(String[] args) {
 //		short ourMac = 319;
