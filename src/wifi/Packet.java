@@ -4,13 +4,14 @@ public class Packet {
 
 	private byte[] frame;
 	private int dataLength;
-	
+
 	public Packet(byte[] frame) {
 		this.frame = frame;
 		this.dataLength = frame.length - 10;
 	}
 
-	public Packet(short frameType, short retryFlag, int sequenceNumber, short ourMac, short dest, byte[] data, int len) {
+	public Packet(short frameType, short retryFlag, int sequenceNumber, short ourMac, short dest, byte[] data,
+			int len) {
 		this.dataLength = Math.min(len, data.length);
 		this.frame = new byte[dataLength + 10];
 
@@ -43,52 +44,51 @@ public class Packet {
 		frame[dataLength + 8] = (byte) ((crc >> 8) & 0xFF);
 		frame[dataLength + 9] = (byte) (crc & 0xFF);
 	}
-	
+
 	public short getDest() {
-		return (short)(((frame[2] & 0xFF) << 8) | (frame[3] & 0xFF));
+		return (short) (((frame[2] & 0xFF) << 8) | (frame[3] & 0xFF));
 	}
 
 	public short getSource() {
-		return (short)(((frame[4] & 0xFF) << 8) | (frame[5] & 0xFF));
+		return (short) (((frame[4] & 0xFF) << 8) | (frame[5] & 0xFF));
 	}
 
 	public byte[] getData() {
 		byte[] data = new byte[dataLength];
-	    for (int i = 0; i < dataLength; i++) {
-	        data[i] = frame[i + 6];
-	    }
-	    return data;
+		for (int i = 0; i < dataLength; i++) {
+			data[i] = frame[i + 6];
+		}
+		return data;
 	}
-	
+
 	public int getDataLength() {
 		return dataLength;
 	}
-	
+
 	public byte[] getFrame() {
 		return frame;
 	}
-	
+
 	public boolean isAck() {
 		short frameType = (short) ((frame[0] >> 5) & 0x07);
 		return frameType == 1;
 	}
-	
+
 	public int getSequenceNumber() {
 		int controlBytes = ((frame[0] & 0xFF) << 8) | (frame[1] & 0xFF);
 		int sequenceNumber = controlBytes & 0x0FFF;
 		return sequenceNumber;
 	}
-	
-	
+
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder("[");
-	    for (byte b : frame) {
-	        int unsigned = b & 0xFF;
-	        sb.append(" ").append(unsigned);
-	    }
-	    sb.append(" ]");
-	    return sb.toString();
+		for (byte b : frame) {
+			int unsigned = b & 0xFF;
+			sb.append(" ").append(unsigned);
+		}
+		sb.append(" ]");
+		return sb.toString();
 	}
 
 	private int calculateCRC(byte[] data, int start, int length) {
@@ -100,7 +100,8 @@ public class Packet {
 			for (int j = 0; j < 8; j++) {
 				if ((crc & 0x80000000) != 0) {
 					crc = (crc << 1) ^ 0x04C11DB7; // XOR with the IEEE 802.11 polynomial
-				} else {
+				}
+				else {
 					crc <<= 1;
 				}
 			}
@@ -109,7 +110,6 @@ public class Packet {
 		return crc;
 	}
 
-	
 //	public static void main(String[] args) {
 //		short ourMac = 319;
 //	    short dest = 256;

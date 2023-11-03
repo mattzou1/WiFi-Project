@@ -2,24 +2,38 @@ package wifi;
 
 import java.io.PrintWriter;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import rf.RF;
 
 public class Sender implements Runnable {
 
+	private static int timeoutTime = 5000;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
 	private int cwSize;
 	private int count;
 	private RF theRF;
 	private ArrayBlockingQueue<Packet> outgoing;
 	private ArrayBlockingQueue<Integer> acks;
+	private AtomicIntegerArray cmds;
 	private PrintWriter output;
 
-	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks, PrintWriter output) {
+	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
+			AtomicIntegerArray cmds, PrintWriter output) {
 		this.theRF = theRF;
 		this.outgoing = outgoing;
 		this.acks = acks;
+		this.cmds = cmds;
 		this.output = output;
+	}
+	
+	private void sleep(int time) {
+		try {
+			Thread.sleep(time);
+		}
+		catch (InterruptedException e) {
+			System.err.println("Error while putting thread to sleep");
+		}
 	}
 
 	@Override
@@ -29,44 +43,45 @@ public class Sender implements Runnable {
 			if (outgoing.size() > 0) {
 				if (!theRF.inUse()) {
 					// Channel is idle wait DIFS before sending
-					try {
-						Thread.sleep(DIFSTime);
-					} catch (InterruptedException e) {
-						System.err.println("Error while putting thread to sleep");
+					if (cmds.get(0) != 0) {
+						output.println("Sender: Idle DIFS waiting");
 					}
+					sleep(DIFSTime);
 					if (!theRF.inUse()) {
 						// transmit if channel is still idle
 						packet = outgoing.poll();
 						theRF.transmit(packet.getFrame());
-						output.println("Sender: Transmited packet: " + packet);
+						if (cmds.get(0) != 0) {
+							output.println("Sender: Transmited packet: " + packet);
+						}
 						long startTime = System.currentTimeMillis();
-						long timeoutMillis = 5000;
 						boolean timeout = true;
-						//start timer
-						while (System.currentTimeMillis() - startTime < timeoutMillis) {
+						// start timer
+						while (System.currentTimeMillis() - startTime < timeoutTime) {
 							if (acks.size() > 0) {
 								int sequenceNumber = acks.poll();
 								if (sequenceNumber == packet.getSequenceNumber()) {
-									//correct ack has been received
+									// correct ack has been received
 									timeout = false;
-									output.println("Sender: Ack received");
+									if (cmds.get(0) != 0) {
+										output.println("Sender: Ack received");
+									}
 									break;
 								}
 							}
-							//Sleep to avoid busy wait
-							try {
-								Thread.sleep(20);
-							} catch (InterruptedException e) {
-								System.err.println("Error while putting thread to sleep");
-							}
+							// Sleep to avoid busy wait
+							sleep(20);
 						}
 						if (timeout) {
-							output.println("Sender: Ack not received");
-							if(cwSize < RF.aCWmax) {
+							if (cmds.get(0) != 0) {
+								output.println("Sender: Ack not received, timeout");
+							}
+							if (cwSize < RF.aCWmax) {
 								cwSize = Math.min(RF.aCWmax, cwSize * 2);
 							}
 							count = 1 + (int) (Math.random() * cwSize);
-						} else {
+						}
+						else {
 							cwSize = RF.aCWmin;
 						}
 					}
@@ -100,13 +115,10 @@ public class Sender implements Runnable {
 //						}
 //					}
 //				}
-			} else {
+			}
+			else {
 				// No packets on outgoing queue sleep for a bit
-				try {
-					Thread.sleep(20);
-				} catch (InterruptedException e) {
-					System.err.println("Error while putting thread to sleep");
-				}
+				sleep(20);
 			}
 		}
 
