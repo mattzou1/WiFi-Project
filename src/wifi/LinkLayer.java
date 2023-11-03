@@ -1,6 +1,5 @@
 package wifi;
 import java.io.PrintWriter;
-import java.util.Stack;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import rf.RF;
@@ -16,7 +15,8 @@ public class LinkLayer implements Dot11Interface
 	private short ourMAC;       // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
 	private ArrayBlockingQueue<Packet> outgoing;
-	private Stack<Packet> incoming;
+	private ArrayBlockingQueue<Packet> incoming;
+	private ArrayBlockingQueue<Integer> acks;
 	private Sender sender;
 	private Receiver receiver;
 
@@ -30,10 +30,11 @@ public class LinkLayer implements Dot11Interface
 		this.ourMAC = ourMAC;
 		this.output = output;      
 		this.outgoing =  new ArrayBlockingQueue<Packet>(10);
-		this.incoming = new Stack<Packet>();
+		this.incoming = new ArrayBlockingQueue<Packet>(10);
+		this.acks = new ArrayBlockingQueue<Integer>(10);
 		theRF = new RF(null, null);
-		this.sender = new Sender(theRF, outgoing, output);
-		this.receiver = new Receiver(theRF, incoming, output);
+		this.sender = new Sender(theRF, outgoing, acks, output);
+		this.receiver = new Receiver(theRF, incoming, acks, output);
 		(new Thread(sender)).start();
 		(new Thread(receiver)).start();
 		output.println("LinkLayer: Constructor ran.");
@@ -44,7 +45,7 @@ public class LinkLayer implements Dot11Interface
 	 * of bytes to send.  See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
-		Packet packet = new Packet(ourMAC, dest, data, len);
+		Packet packet = new Packet((short)0, (short)0, 0, ourMAC, dest, data, len);
 		outgoing.add(packet);
 		output.println("LinkLayer: Sending "+len+" bytes to "+dest);
 		return len;
@@ -59,13 +60,13 @@ public class LinkLayer implements Dot11Interface
 	    while (incoming.isEmpty()) {
 	        // Sleep for a short period to avoid busy-waiting
 	        try {
-	            Thread.sleep(100); // Sleep for 100 milliseconds
+	            Thread.sleep(20); // Sleep for 20 milliseconds
 	        } catch (InterruptedException e) {
 	        	System.err.println("Error while putting thread to sleep");
 	        }
 	    }
 
-	    Packet packet = incoming.pop(); // Retrieve the first packet from the stack
+	    Packet packet = incoming.poll(); 
 	    t.setDestAddr(packet.getDest());
 	    t.setSourceAddr(packet.getSource());
 	    t.setBuf(packet.getData());

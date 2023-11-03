@@ -10,13 +10,13 @@ public class Packet {
 		this.dataLength = frame.length - 10;
 	}
 
-	public Packet(short ourMac, short dest, byte[] data, int len) {
+	public Packet(short frameType, short retryFlag, int sequenceNumber, short ourMac, short dest, byte[] data, int len) {
 		this.dataLength = Math.min(len, data.length);
 		this.frame = new byte[dataLength + 10];
 
-		short frameType = 0;
-		short retryFlag = 0;
-		int sequenceNumber = 0;
+//		short frameType = 0;
+//		short retryFlag = 0;
+//		int sequenceNumber = 0;
 		short control = 0;
 
 		control |= (frameType & 0x07) << 13; // 3 bits for frame type, shifted to the left
@@ -68,6 +68,17 @@ public class Packet {
 		return frame;
 	}
 	
+	public boolean isAck() {
+		short frameType = (short) ((frame[0] >> 5) & 0x07);
+		return frameType == 1;
+	}
+	
+	public int getSequenceNumber() {
+		int controlBytes = ((frame[0] & 0xFF) << 8) | (frame[1] & 0xFF);
+		int sequenceNumber = controlBytes & 0x0FFF;
+		return sequenceNumber;
+	}
+	
 	
 	@Override
 	public String toString() {
@@ -104,8 +115,8 @@ public class Packet {
 //	    short dest = 256;
 //	    byte[] data = new byte[]{0x01, 0x02, 0x03};
 //	    int len = data.length;
-//
 //	    Packet packet = new Packet(ourMac, dest, data, len);
+//	    System.out.println(packet);
 //
 //	}
 
