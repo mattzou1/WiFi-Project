@@ -35,6 +35,7 @@ public class Receiver implements Runnable {
 			// check if packet's destination is for us
 			if (packet.getDest() == ourMAC || isBroadcast) {
 				if (packet.isAck()) {
+					//add seqNum of the ack to acks queue
 					acks.add(packet.getSequenceNumber());
 					if (cmds.get(0) != 0) {
 						output.println("Receiver: Received Ack: " + packet);
@@ -46,6 +47,7 @@ public class Receiver implements Runnable {
 						output.println("Receiver: Received Packet: " + packet);
 					}
 					if (!isBroadcast) {
+						//if packet is not a broadcast, wait SIFS and send an ack;
 						try {
 							Thread.sleep(RF.aSIFSTime);
 						}

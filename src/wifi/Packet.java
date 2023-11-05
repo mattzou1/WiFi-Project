@@ -1,5 +1,7 @@
 package wifi;
 
+import rf.RF;
+
 public class Packet {
 
 	private byte[] frame;
@@ -12,7 +14,10 @@ public class Packet {
 
 	public Packet(short frameType, short retryFlag, int sequenceNumber, short ourMac, short dest, byte[] data,
 			int len) {
+		//use len bytes or f len exceeds the size of the byte array, send as many bytes as data contains
 		this.dataLength = Math.min(len, data.length);
+		//use a max of 2038 bytes of data
+		this.dataLength = Math.min(this.dataLength, RF.aMPDUMaximumLength - 10);
 		this.frame = new byte[dataLength + 10];
 
 //		short frameType = 0;
@@ -38,7 +43,7 @@ public class Packet {
 			frame[i + 6] = data[i];
 		}
 		// CRC bytes
-		int crc = calculateCRC(frame, 0, dataLength + 6); // Assuming 'calculateCRC' is your CRC calculation function.
+		int crc = calculateCRC(frame, 0, dataLength + 6); 
 		frame[dataLength + 6] = (byte) ((crc >> 24) & 0xFF);
 		frame[dataLength + 7] = (byte) ((crc >> 16) & 0xFF);
 		frame[dataLength + 8] = (byte) ((crc >> 8) & 0xFF);
@@ -90,7 +95,10 @@ public class Packet {
 		sb.append(" ]");
 		return sb.toString();
 	}
-
+	
+	/*
+	 * Needs testing 
+	 */
 	private int calculateCRC(byte[] data, int start, int length) {
 		int crc = 0xFFFFFFFF; // Initialize CRC to all 1's (32 bits)
 

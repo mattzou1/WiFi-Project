@@ -1,6 +1,7 @@
 package wifi;
 
 import java.io.PrintWriter;
+import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
@@ -20,6 +21,7 @@ public class LinkLayer implements Dot11Interface {
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
+	private HashMap<Short, Integer> seqNums; //contains most recently used seqNum for ever destination
 	private Sender sender;
 	private Receiver receiver;
 
@@ -37,6 +39,7 @@ public class LinkLayer implements Dot11Interface {
 		this.incoming = new ArrayBlockingQueue<Packet>(10);
 		this.acks = new ArrayBlockingQueue<Integer>(10);
 		this.cmds = new AtomicIntegerArray(3);
+		this.seqNums = new HashMap<Short, Integer>();
 		theRF = new RF(null, null);
 		this.sender = new Sender(theRF, outgoing, acks, cmds, output);
 		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC);
@@ -53,7 +56,17 @@ public class LinkLayer implements Dot11Interface {
 	 * bytes to send. See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
-		Packet packet = new Packet((short) 0, (short) 0, 0, ourMAC, dest, data, len);
+		int seqNum = 0;
+		if(seqNums.containsKey(dest)) {
+			//dest is in hashmap, increment most recently used seqNum
+			seqNum = (seqNums.get(dest) + 1) & 0xFFF;
+			seqNums.put(dest, seqNum);
+		}
+		else {
+			//dest is not in hashmap, use seqNum 0
+			seqNums.put(dest, 0);
+		}	
+		Packet packet = new Packet((short) 0, (short) 0, seqNum, ourMAC, dest, data, len);
 		outgoing.add(packet);
 		if (cmds.get(0) != 0) {
 			output.println("LinkLayer: Sending " + len + " bytes to " + dest);
