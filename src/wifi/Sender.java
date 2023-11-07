@@ -39,8 +39,10 @@ public class Sender implements Runnable {
 	@Override
 	public void run() {
 		while (true) {
-			Packet packet = null;
+			Packet packet  = null;
 			if (outgoing.size() > 0) {
+				packet  = outgoing.poll();
+				boolean isBroadcast = packet.getDest() == (short) -1;
 				if (!theRF.inUse()) {
 					// Channel is idle wait DIFS before sending
 					if (cmds.get(0) != 0) {
@@ -49,10 +51,12 @@ public class Sender implements Runnable {
 					sleep(DIFSTime);
 					if (!theRF.inUse()) {
 						// transmit if channel is still idle
-						packet = outgoing.poll();
 						theRF.transmit(packet.getFrame());
 						if (cmds.get(0) != 0) {
 							output.println("Sender: Transmited packet: " + packet);
+						}
+						if(isBroadcast) {
+							continue;
 						}
 						long startTime = System.currentTimeMillis();
 						boolean timeout = true;
