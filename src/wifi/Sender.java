@@ -80,6 +80,7 @@ public class Sender implements Runnable {
 					resetCW();
 					retries = 0;
 					myState = State.awaitData;
+					break;
 				}
 				if (cmds.get(0) != 0) {
 					output.println("Sender: Awaiting Ack");
