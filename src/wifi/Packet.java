@@ -1,5 +1,7 @@
 package wifi;
 
+import java.util.zip.CRC32;
+
 import rf.RF;
 
 public class Packet {
@@ -99,26 +101,11 @@ public class Packet {
 		return sb.toString();
 	}
 	
-	/*
-	 * Needs testing 
-	 */
+	
 	private int calculateCRC(byte[] data, int start, int length) {
-		int crc = 0xFFFFFFFF; // Initialize CRC to all 1's (32 bits)
-
-		for (int i = start; i < start + length; i++) {
-			crc ^= ((int) data[i] & 0xFF) << 24; // XOR with next byte
-
-			for (int j = 0; j < 8; j++) {
-				if ((crc & 0x80000000) != 0) {
-					crc = (crc << 1) ^ 0x04C11DB7; // XOR with the IEEE 802.11 polynomial
-				}
-				else {
-					crc <<= 1;
-				}
-			}
-		}
-
-		return crc;
+		CRC32 crc32 = new CRC32();
+        crc32.update(data, start, length);
+        return (int) crc32.getValue();
 	}
 
 //	public static void main(String[] args) {
