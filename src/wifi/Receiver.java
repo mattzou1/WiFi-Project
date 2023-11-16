@@ -35,8 +35,6 @@ public class Receiver implements Runnable {
 			byte[] frame = theRF.receive();
 			Packet packet = new Packet(frame);
 			short dest = packet.getDest();
-			int recvSeq = packet.getSequenceNumber();
-			int currSeq = incomingSeqNums.get(dest);
 			boolean isBroadcast = dest == (short) -1;
 
 
@@ -50,7 +48,19 @@ public class Receiver implements Runnable {
 					}
 				}
 				else {
-					incoming.add(packet);
+					if (!isBroadcast) {
+						int recvSeq = packet.getSequenceNumber();
+						int currSeq = incomingSeqNums.get(dest);
+						//Packet is not duplicate queue it
+						if(recvSeq != currSeq) incoming.add(packet);
+						//If a seqNum is skipped print err
+						if(recvSeq != currSeq + 1) output.println("Out of Order Sequence Number");
+						//place new seqNum into hashmap of all received seqNums
+						incomingSeqNums.put(dest, recvSeq);
+					}
+					else {
+						incoming.add(packet);
+					}
 					if (cmds.get(0) != 0) {
 						output.println("Receiver: Received Packet: " + packet);
 					}
@@ -63,20 +73,13 @@ public class Receiver implements Runnable {
 							System.err.println("Error while putting thread to sleep");
 						}
 						if (!theRF.inUse()) {
-							//Packet is not duplicate and needs to be added
-							if(recvSeq != currSeq) {
-								//If a seqNum is skipped print err
-								if(recvSeq > currSeq + 1) output.println("Missing Sequence Number");
-								//place new seqNum into hashmap of all received seqNums
-								incomingSeqNums.put(dest, recvSeq);
-								byte[] emptyArray = new byte[0];
-								Packet ack = new Packet((short) 1, (short) 0, packet.getSequenceNumber(), ourMAC,
-										packet.getSource(), emptyArray, 0);
-								theRF.transmit(ack.getFrame());
-								if (cmds.get(0) != 0) {
-									output.println("Receiver: Ack sent");
-								}
-							}	
+							byte[] emptyArray = new byte[0];
+							Packet ack = new Packet((short) 1, (short) 0, packet.getSequenceNumber(), ourMAC,
+									packet.getSource(), emptyArray, 0);
+							theRF.transmit(ack.getFrame());
+							if (cmds.get(0) != 0) {
+								output.println("Receiver: Ack sent");
+							}
 						}
 					}
 
