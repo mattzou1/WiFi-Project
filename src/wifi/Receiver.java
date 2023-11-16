@@ -48,23 +48,29 @@ public class Receiver implements Runnable {
 					}
 				}
 				else {
-					if (!isBroadcast) {
+					if(isBroadcast) {
+						incoming.add(packet);
+						if (cmds.get(0) != 0) {
+							output.println("Receiver: Received Packet: " + packet);
+						}
+					}
+					else {
 						int recvSeq = packet.getSequenceNumber();
-						int currSeq = incomingSeqNums.get(dest);
+						int currSeq = -1;
+						if(incomingSeqNums.containsKey(dest)) {
+							currSeq = incomingSeqNums.get(dest);
+						}
 						//Packet is not duplicate queue it
-						if(recvSeq != currSeq) incoming.add(packet);
+						if(recvSeq != currSeq) {
+							incoming.add(packet);
+							if (cmds.get(0) != 0) {
+								output.println("Receiver: Received Packet: " + packet);
+							}
+						}
 						//If a seqNum is skipped print err
 						if(recvSeq != currSeq + 1) output.println("Out of Order Sequence Number");
 						//place new seqNum into hashmap of all received seqNums
 						incomingSeqNums.put(dest, recvSeq);
-					}
-					else {
-						incoming.add(packet);
-					}
-					if (cmds.get(0) != 0) {
-						output.println("Receiver: Received Packet: " + packet);
-					}
-					if (!isBroadcast) {
 						//if packet is not a broadcast, wait SIFS and send an ack;
 						try {
 							Thread.sleep(RF.aSIFSTime);

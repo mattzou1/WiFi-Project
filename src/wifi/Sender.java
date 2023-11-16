@@ -12,7 +12,7 @@ public class Sender implements Runnable {
         awaitData, idleWait, busyDIFSWait, idleDIFSWait, awaitAck, slotWait
     };
 
-	private static int timeoutTime = 5000;
+	private static int timeoutTime = 2000;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
 	private int cwSize;
 	private int count;
@@ -45,6 +45,14 @@ public class Sender implements Runnable {
 			System.err.println("Error while putting thread to sleep");
 		}
 	}
+	
+	private void resetCW() {
+		cwSize = RF.aCWmin;
+		count = 1 + (int) (Math.random() * cwSize);
+		if (cmds.get(0) != 0) {
+			output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
+		}
+	}
 
 	@Override
 	public void run() {
@@ -60,11 +68,7 @@ public class Sender implements Runnable {
 							myState = State.idleDIFSWait;
 						}
 						else {
-							cwSize = RF.aCWmin;
-							count = 1 + (int) (Math.random() * cwSize);
-							if (cmds.get(0) != 0) {
-								output.println("Sender: Collission window size set to : " + cwSize + ", Count set to: " + count);
-							}
+							resetCW();
 							myState = State.idleWait;
 						}
 					}
@@ -119,14 +123,19 @@ public class Sender implements Runnable {
 						}
 						cwSize = Math.min(RF.aCWmax, cwSize * 2);
 						count = 1 + (int) (Math.random() * cwSize);
+						if (cmds.get(0) != 0) {
+							output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
+						}
 						retries ++;
 						if (cmds.get(0) != 0) {
-							output.println("Sender: Collission window size set to : " + cwSize + ", Count set to: " + count);
+							output.println("Sender: Retry number set to " + retries);
 						}
 						if(retries > RF.dot11RetryLimit) {
 							if (cmds.get(0) != 0) {
 								output.println("Sender: Retry limit reached");
 							}
+							resetCW();
+							retries = 0;
 							myState = State.awaitData;
 						}
 						else {
@@ -134,12 +143,8 @@ public class Sender implements Runnable {
 						}		
 					}
 					else {
-						cwSize = RF.aCWmin;
-						count = 1 + (int) (Math.random() * cwSize);
+						resetCW();
 						retries = 0;
-						if (cmds.get(0) != 0) {
-							output.println("Sender: Collission window size set to : " + cwSize + ", Count set to: " + count);
-						}
 						myState = State.awaitData;
 					}
 					break;
@@ -163,7 +168,7 @@ public class Sender implements Runnable {
 					break;
 				case slotWait:
 					if (cmds.get(0) != 0) {
-						output.println("Sender: Slot waiting with count: " + count);
+						output.println("Sender: Slot waiting with count " + count);
 					}
 					sleep(RF.aSlotTime);
 					if(theRF.inUse()) {
@@ -179,7 +184,7 @@ public class Sender implements Runnable {
 							}
 							theRF.transmit(packet.getFrame());
 							if (cmds.get(0) != 0) {
-								output.println("Sender: Transmited packet: " + packet);
+								output.println("Sender: Transmited packet " + packet);
 							}
 							myState = State.awaitAck;
 						}
