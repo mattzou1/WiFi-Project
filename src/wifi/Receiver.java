@@ -1,6 +1,7 @@
 package wifi;
 
 import java.io.PrintWriter;
+import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
@@ -14,6 +15,8 @@ public class Receiver implements Runnable {
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
 	private short ourMAC;
+	private HashMap<Short, Integer> incomingSeqNums; //contains most recently used seqNum for ever destination
+
 
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
 			AtomicIntegerArray cmds, PrintWriter output, short ourMAC) {
@@ -23,6 +26,7 @@ public class Receiver implements Runnable {
 		this.cmds = cmds;
 		this.output = output;
 		this.ourMAC = ourMAC;
+		this.incomingSeqNums = new HashMap<Short, Integer>();
 	}
 
 	@Override
@@ -30,7 +34,11 @@ public class Receiver implements Runnable {
 		while (true) {
 			byte[] frame = theRF.receive();
 			Packet packet = new Packet(frame);
-			boolean isBroadcast = packet.getDest() == (short) -1;
+			short dest = packet.getDest();
+			int recvSeq = packet.getSequenceNumber();
+			int currSeq = incomingSeqNums.get(dest);
+			boolean isBroadcast = dest == (short) -1;
+
 
 			// check if packet's destination is for us
 			if (packet.getDest() == ourMAC || isBroadcast) {
@@ -55,14 +63,20 @@ public class Receiver implements Runnable {
 							System.err.println("Error while putting thread to sleep");
 						}
 						if (!theRF.inUse()) {
-							byte[] emptyArray = new byte[0];
-							Packet ack = new Packet((short) 1, (short) 0, packet.getSequenceNumber(), ourMAC,
-									packet.getSource(), emptyArray, 0);
-							theRF.transmit(ack.getFrame());
-							if (cmds.get(0) != 0) {
-								output.println("Receiver: Ack sent");
-							}
-
+							//Packet is not duplicate and needs to be added
+							if(recvSeq != currSeq) {
+								//If a seqNum is skipped print err
+								if(recvSeq > currSeq + 1) output.println("Missing Sequence Number");
+								//place new seqNum into hashmap of all received seqNums
+								incomingSeqNums.put(dest, recvSeq);
+								byte[] emptyArray = new byte[0];
+								Packet ack = new Packet((short) 1, (short) 0, packet.getSequenceNumber(), ourMAC,
+										packet.getSource(), emptyArray, 0);
+								theRF.transmit(ack.getFrame());
+								if (cmds.get(0) != 0) {
+									output.println("Receiver: Ack sent");
+								}
+							}	
 						}
 					}
 
