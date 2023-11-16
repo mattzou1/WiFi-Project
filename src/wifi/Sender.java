@@ -26,7 +26,8 @@ public class Sender implements Runnable {
 
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
 			AtomicIntegerArray cmds, PrintWriter output) {
-		resetCW();
+		this.cwSize = RF.aCWmin;
+		this.count = (int) (Math.random() * (cwSize + 1));
 		this.retries = 0;
 		this.theRF = theRF;
 		this.outgoing = outgoing;
