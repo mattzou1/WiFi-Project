@@ -7,24 +7,34 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import rf.RF;
 
 public class Sender implements Runnable {
+	
+	public enum State {
+        awaitData, idleWait, busyDIFSWait, idleDIFSWait, awaitAck, slotWait
+    };
 
 	private static int timeoutTime = 5000;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
 	private int cwSize;
 	private int count;
+	private int retries;
 	private RF theRF;
 	private ArrayBlockingQueue<Packet> outgoing;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
+	private State myState;
 
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
 			AtomicIntegerArray cmds, PrintWriter output) {
+		this.cwSize = RF.aCWmin;
+		this.count = 1;
+		this.retries = 0;
 		this.theRF = theRF;
 		this.outgoing = outgoing;
 		this.acks = acks;
 		this.cmds = cmds;
 		this.output = output;
+		this.myState = State.awaitData;
 	}
 	
 	private void sleep(int time) {
@@ -38,91 +48,148 @@ public class Sender implements Runnable {
 
 	@Override
 	public void run() {
+		Packet packet = null;
+		boolean isBroadcast = false;
 		while (true) {
-			Packet packet  = null;
-			if (outgoing.size() > 0) {
-				packet  = outgoing.poll();
-				boolean isBroadcast = packet.getDest() == (short) -1;
-				if (!theRF.inUse()) {
-					// Channel is idle wait DIFS before sending
+			switch(myState) {
+				case awaitData:
+					if(outgoing.size() > 0) {
+						packet = outgoing.poll();
+						isBroadcast = packet.getDest() == (short) -1;
+						if(!theRF.inUse()) {
+							myState = State.idleDIFSWait;
+						}
+						else {
+							cwSize = RF.aCWmin;
+							count = 1 + (int) (Math.random() * cwSize);
+							if (cmds.get(0) != 0) {
+								output.println("Sender: Collission window size set to : " + cwSize + ", Count set to: " + count);
+							}
+							myState = State.idleWait;
+						}
+					}
+					else {
+						sleep(20);
+					}
+					break;
+				case idleDIFSWait:
 					if (cmds.get(0) != 0) {
 						output.println("Sender: Idle DIFS waiting");
 					}
 					sleep(DIFSTime);
-					if (!theRF.inUse()) {
-						// transmit if channel is still idle
+					if(!theRF.inUse()) {
 						theRF.transmit(packet.getFrame());
 						if (cmds.get(0) != 0) {
 							output.println("Sender: Transmited packet: " + packet);
 						}
-						if(isBroadcast) {
-							continue;
-						}
-						long startTime = System.currentTimeMillis();
-						boolean timeout = true;
-						// start timer
-						while (System.currentTimeMillis() - startTime < timeoutTime) {
-							if (acks.size() > 0) {
-								int sequenceNumber = acks.poll();
-								if (sequenceNumber == packet.getSequenceNumber()) {
-									// correct ack has been received
-									timeout = false;
-									if (cmds.get(0) != 0) {
-										output.println("Sender: Ack received");
-									}
-									break;
+						myState = State.awaitAck;
+					}
+					else {
+						myState = State.idleWait;
+					}
+					break;
+				case awaitAck:
+					if(isBroadcast) {
+						myState = State.awaitData;
+					}
+					if (cmds.get(0) != 0) {
+						output.println("Sender: Awaiting Ack");
+					}
+					long startTime = System.currentTimeMillis();
+					boolean timeout = true;
+					// start timer
+					while (System.currentTimeMillis() - startTime < timeoutTime) {
+						if (acks.size() > 0) {
+							int sequenceNumber = acks.poll();
+							if (sequenceNumber == packet.getSequenceNumber()) {
+								// correct ack has been received
+								timeout = false;
+								if (cmds.get(0) != 0) {
+									output.println("Sender: Ack received");
 								}
+								break;
 							}
-							// Sleep to avoid busy wait
-							sleep(20);
 						}
-						if (timeout) {
+						// Sleep to avoid busy wait
+						sleep(20);
+					}
+					if (timeout) {
+						if (cmds.get(0) != 0) {
+							output.println("Sender: Ack not received, timeout");
+						}
+						cwSize = Math.min(RF.aCWmax, cwSize * 2);
+						count = 1 + (int) (Math.random() * cwSize);
+						retries ++;
+						if (cmds.get(0) != 0) {
+							output.println("Sender: Collission window size set to : " + cwSize + ", Count set to: " + count);
+						}
+						if(retries > RF.dot11RetryLimit) {
 							if (cmds.get(0) != 0) {
-								output.println("Sender: Ack not received, timeout");
+								output.println("Sender: Retry limit reached");
 							}
-							if (cwSize < RF.aCWmax) {
-								cwSize = Math.min(RF.aCWmax, cwSize * 2);
-							}
-							count = 1 + (int) (Math.random() * cwSize);
+							myState = State.awaitData;
 						}
 						else {
-							cwSize = RF.aCWmin;
+							myState = State.busyDIFSWait;
+						}		
+					}
+					else {
+						cwSize = RF.aCWmin;
+						count = 1 + (int) (Math.random() * cwSize);
+						retries = 0;
+						if (cmds.get(0) != 0) {
+							output.println("Sender: Collission window size set to : " + cwSize + ", Count set to: " + count);
+						}
+						myState = State.awaitData;
+					}
+					break;
+				case idleWait:
+					while(theRF.inUse()) {
+						sleep(20);
+					}
+					myState = State.busyDIFSWait;
+					break;
+				case busyDIFSWait:
+					if (cmds.get(0) != 0) {
+						output.println("Sender: Busy DIFS waiting");
+					}
+					sleep(DIFSTime);
+					if(theRF.inUse()) {
+						myState = State.idleWait;
+					}
+					else {
+						myState = State.slotWait;
+					}
+					break;
+				case slotWait:
+					if (cmds.get(0) != 0) {
+						output.println("Sender: Slot waiting with count: " + count);
+					}
+					sleep(RF.aSlotTime);
+					if(theRF.inUse()) {
+						myState = State.idleWait;
+					}
+					else {
+						if(count > 1) {
+							count--;
+						}
+						else {
+							if(retries > 0) {
+								packet.setRetryFlag(true);
+							}
+							theRF.transmit(packet.getFrame());
+							if (cmds.get(0) != 0) {
+								output.println("Sender: Transmited packet: " + packet);
+							}
+							myState = State.awaitAck;
 						}
 					}
-
-				}
-//				if(theRF.inUse()) {
-//					// Channel is busy, set cwSize to min CW size
-//					cwSize = RF.aCWmin;
-//					// Set count to random number between 1 and cwSize
-//					count = 1 + (int) (Math.random() * cwSize);
-//
-//					boolean packetSent = false;
-//					while (!packetSent) {
-//						// Wait for channel to become idle
-//						while (theRF.inUse()) {
-//							// Sleep for a short period to avoid busy-waiting
-//							try {
-//								Thread.sleep(20); // Sleep for 100 milliseconds
-//							} catch (InterruptedException e) {
-//								System.err.println("Error while putting thread to sleep");
-//							}
-//						}
-//						// Busy DIFS wait
-//						try {
-//							Thread.sleep(DIFSTime); // Sleep for 100 milliseconds
-//						} catch (InterruptedException e) {
-//							System.err.println("Error while putting thread to sleep");
-//						}
-//						if(theRF.inUse()) {
-//							continue;
-//						}
-//					}
-//				}
-			}
-			else {
-				// No packets on outgoing queue sleep for a bit
-				sleep(20);
+					break;
+				default:
+					if (cmds.get(0) != 0) {
+						output.println("Unexpected state!");
+					}
+					
 			}
 		}
 

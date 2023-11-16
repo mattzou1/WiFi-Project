@@ -20,9 +20,6 @@ public class Packet {
 		this.dataLength = Math.min(this.dataLength, RF.aMPDUMaximumLength - 10);
 		this.frame = new byte[dataLength + 10];
 
-//		short frameType = 0;
-//		short retryFlag = 0;
-//		int sequenceNumber = 0;
 		short control = 0;
 
 		control |= (frameType & 0x07) << 13; // 3 bits for frame type, shifted to the left
@@ -83,6 +80,12 @@ public class Packet {
 		int controlBytes = ((frame[0] & 0xFF) << 8) | (frame[1] & 0xFF);
 		int sequenceNumber = controlBytes & 0x0FFF;
 		return sequenceNumber;
+	}
+	
+	public void setRetryFlag(boolean isRetry) {
+		if (isRetry) {
+	        frame[0] |= (1 << 4);
+	    }
 	}
 
 	@Override
