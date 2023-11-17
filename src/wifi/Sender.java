@@ -107,11 +107,6 @@ public class Sender implements Runnable {
 					if (cmds.get(0) != 0) {
 						output.println("Sender: Ack not received, timeout");
 					}
-					cwSize = Math.min(RF.aCWmax, cwSize * 2);
-					count = (int) (Math.random() * (cwSize + 1));
-					if (cmds.get(0) != 0) {
-						output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
-					}
 					retries++;
 					if (cmds.get(0) != 0) {
 						output.println("Sender: Retry number set to " + retries);
@@ -125,7 +120,12 @@ public class Sender implements Runnable {
 						myState = State.awaitData;
 					}
 					else {
-						myState = State.busyDIFSWait;
+						cwSize = Math.min(RF.aCWmax, cwSize * 2);
+						count = (int) (Math.random() * (cwSize + 1));
+						if (cmds.get(0) != 0) {
+							output.println("Sender: Collission window size doubled to " + cwSize + ", Count set to " + count);
+						}
+						myState = State.idleWait;
 					}
 				}
 				else {
