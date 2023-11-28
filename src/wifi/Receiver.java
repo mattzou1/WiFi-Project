@@ -39,7 +39,7 @@ public class Receiver implements Runnable {
 
 
 			// check if packet's destination is for us
-			if (packet.getDest() == ourMAC || isBroadcast) {
+			if ((packet.getDest() == ourMAC || isBroadcast) && packet.isValid()) {
 				if (packet.isAck()) {
 					//add seqNum of the ack to acks queue
 					acks.add(packet.getSequenceNumber());

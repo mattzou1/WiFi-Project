@@ -89,6 +89,19 @@ public class Packet {
 	        frame[0] |= (1 << 4);
 	    }
 	}
+	
+	public boolean isValid() {
+		int crc = calculateCRC(frame, 0, dataLength + 6); 
+		int frameCrc =
+			    ((frame[dataLength + 6] & 0xFF) << 24) |
+			    ((frame[dataLength + 7] & 0xFF) << 16) |
+			    ((frame[dataLength + 8] & 0xFF) << 8) |
+			    (frame[dataLength + 9] & 0xFF);
+		if(crc == frameCrc) {
+			return true;
+		}
+		return false;
+	}
 
 	@Override
 	public String toString() {

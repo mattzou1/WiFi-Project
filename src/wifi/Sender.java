@@ -121,7 +121,12 @@ public class Sender implements Runnable {
 					}
 					else {
 						cwSize = Math.min(RF.aCWmax, cwSize * 2);
-						count = (int) (Math.random() * (cwSize + 1));
+						if(cmds.get(1) == 0) {
+							count = (int) (Math.random() * (cwSize + 1));
+						}
+						else {
+							count = cwSize;
+						}
 						if (cmds.get(0) != 0) {
 							output.println("Sender: Collission window size doubled to " + cwSize + ", Count set to " + count);
 						}
@@ -196,7 +201,13 @@ public class Sender implements Runnable {
 
 	private void resetCW() {
 		cwSize = RF.aCWmin;
-		count = (int) (Math.random() * (cwSize + 1));
+		if(cmds.get(1) == 0) {
+			count = (int) (Math.random() * (cwSize + 1));
+		}
+		else {
+			count = cwSize;
+		}
+		
 		if (cmds.get(0) != 0) {
 			output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
 		}

@@ -116,7 +116,7 @@ public class LinkLayer implements Dot11Interface {
 	 */
 	public int command(int cmd, int val) {
 		if (cmd == 0) {
-			output.println("Options and Settings:");
+			output.println("-------------- Commands and Settings -----------------");
 			output.println("Debug level: A value of 0 disables all debugging output, any other value enables it");
 			output.println("Current value: " + cmds.get(0) + "\n");
 			output.println(
@@ -125,10 +125,19 @@ public class LinkLayer implements Dot11Interface {
 			output.println(
 					"Beacon interval: Value specifies the desired number of seconds between the start of beacon transmissions, A value of -1 disables the sending of beacon frames");
 			output.println("Current value: " + cmds.get(2) + "\n");
+			output.println("------------------------------------------------------");
 		}
 		else if (cmd == 1) {
 			cmds.set(0, val);
 			output.println("Debug level value: " + val);
+		}
+		else if (cmd == 2) {
+			cmds.set(1, val);
+			output.println("Slot selection value: " + val);
+		}
+		else if (cmd == 3) {
+			cmds.set(2, val);
+			output.println("Beacon interval value: " + val);
 		}
 		return 0;
 	}
