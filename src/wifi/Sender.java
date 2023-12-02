@@ -60,7 +60,6 @@ public class Sender implements Runnable {
 						data[i] = (byte)(validClockTime >> 56 - (8 * i));
 					}
 					packet = new Packet((short) 2, (short) 0, 0, ourMAC, (short) -1, data, 8);
-					beaconStartTime = System.currentTimeMillis();
 					isBroadcast = true;
 					if (cmds.get(0) != 0) {
 						output.println("Sender: Starting to send Beacon with time: " + validClockTime);
@@ -113,6 +112,7 @@ public class Sender implements Runnable {
 				if (isBroadcast) {
 					resetCW();
 					retries = 0;
+					beaconStartTime = System.currentTimeMillis();
 					myState = State.awaitData;
 					break;
 				}
