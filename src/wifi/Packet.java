@@ -77,6 +77,11 @@ public class Packet {
 		short frameType = (short) ((frame[0] >> 5) & 0x07);
 		return frameType == 1;
 	}
+	
+	public boolean isBeacon() {
+		short frameType = (short) ((frame[0] >> 5) & 0x07);
+		return frameType == 2;
+	}
 
 	public int getSequenceNumber() {
 		int controlBytes = ((frame[0] & 0xFF) << 8) | (frame[1] & 0xFF);

@@ -3,6 +3,7 @@ package wifi;
 import java.io.PrintWriter;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicLong;
 
 import rf.RF;
 
@@ -14,6 +15,7 @@ public class Sender implements Runnable {
 
 	private static int timeoutTime = 2000;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
+	private static long beaconSendOffset = 0;
 	private int cwSize;
 	private int count;
 	private int retries;
@@ -22,10 +24,13 @@ public class Sender implements Runnable {
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
+	private short ourMAC;
+	private AtomicLong clockTime;
 	private State myState;
+	
 
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong clockTime) {
 		this.cwSize = RF.aCWmin;
 		this.count = (int) (Math.random() * (cwSize + 1));
 		this.retries = 0;
@@ -34,6 +39,8 @@ public class Sender implements Runnable {
 		this.acks = acks;
 		this.cmds = cmds;
 		this.output = output;
+		this.ourMAC = ourMAC;
+		this.clockTime = clockTime;
 		this.myState = State.awaitData;
 	}
 
@@ -41,12 +48,38 @@ public class Sender implements Runnable {
 	public void run() {
 		Packet packet = null;
 		boolean isBroadcast = false;
+		long beaconStartTime = System.currentTimeMillis();
 		while (true) {
 			switch (myState) {
 			case awaitData:
-				if (outgoing.size() > 0) {
+				//check if beacon timer is over
+				if(System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) {
+					long validClockTime = Math.max(theRF.clock(), clockTime.get()) + beaconSendOffset;
+					byte[] data = new byte[8];
+					for(int i = 0; i < 8; i++) {
+						data[i] = (byte)(validClockTime >> 56 - (8 * i));
+					}
+					packet = new Packet((short) 2, (short) 0, 0, ourMAC, (short) -1, data, 8);
+					beaconStartTime = System.currentTimeMillis();
+					isBroadcast = true;
+					if (cmds.get(0) != 0) {
+						output.println("Sender: Starting to send Beacon with time: " + validClockTime);
+					}
+					if (!theRF.inUse()) {
+						myState = State.idleDIFSWait;
+					}
+					else {
+						resetCW();
+						myState = State.idleWait;
+					}
+				}
+				//check if outgoing queue has packets to send
+				else if (outgoing.size() > 0){
 					packet = outgoing.poll();
 					isBroadcast = packet.getDest() == (short) -1;
+					if (cmds.get(0) != 0) {
+						output.println("Sender: Starting to send Data");
+					}
 					if (!theRF.inUse()) {
 						myState = State.idleDIFSWait;
 					}
@@ -58,6 +91,7 @@ public class Sender implements Runnable {
 				else {
 					sleep(20);
 				}
+				
 				break;
 			case idleDIFSWait:
 				if (cmds.get(0) != 0) {

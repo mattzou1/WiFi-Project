@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicLong;
 
 import rf.RF;
 
@@ -17,6 +18,7 @@ public class LinkLayer implements Dot11Interface {
 	private RF theRF; // You'll need one of these eventually
 	private short ourMAC; // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
+	private AtomicLong clockTime;
 	private ArrayBlockingQueue<Packet> outgoing;
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
@@ -24,6 +26,7 @@ public class LinkLayer implements Dot11Interface {
 	private HashMap<Short, Integer> seqNums; //contains most recently used seqNum for ever destination
 	private Sender sender;
 	private Receiver receiver;
+	
 
 	/**
 	 * Constructor takes a MAC address and the PrintWriter to which our output will
@@ -33,16 +36,18 @@ public class LinkLayer implements Dot11Interface {
 	 * @param output Output stream associated with GUI
 	 */
 	public LinkLayer(short ourMAC, PrintWriter output) {
+		theRF = new RF(null, null);
 		this.ourMAC = ourMAC;
 		this.output = output;
+		this.clockTime = new AtomicLong(theRF.clock());
 		this.outgoing = new ArrayBlockingQueue<Packet>(10);
 		this.incoming = new ArrayBlockingQueue<Packet>(10);
 		this.acks = new ArrayBlockingQueue<Integer>(10);
 		this.cmds = new AtomicIntegerArray(3);
+		this.cmds.set(2, 3);
 		this.seqNums = new HashMap<Short, Integer>();
-		theRF = new RF(null, null);
-		this.sender = new Sender(theRF, outgoing, acks, cmds, output);
-		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC);
+		this.sender = new Sender(theRF, outgoing, acks, cmds, output, ourMAC, clockTime);
+		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC, clockTime);
 		(new Thread(sender)).start();
 		(new Thread(receiver)).start();
 		if (cmds.get(0) != 0) {
