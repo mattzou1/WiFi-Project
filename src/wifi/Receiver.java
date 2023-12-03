@@ -10,7 +10,7 @@ import rf.RF;
 
 public class Receiver implements Runnable {
 	
-	private static long beaconReceiveOffset = 0;
+	private static long beaconReceiveOffset = 953;
 	private RF theRF;
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;

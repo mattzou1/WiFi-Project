@@ -15,7 +15,7 @@ public class Sender implements Runnable {
 
 	private static int timeoutTime = 2000;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
-	private static long beaconSendOffset = 0;
+	private static long beaconSendOffset = 2465;
 	private int cwSize;
 	private int count;
 	private int retries;
