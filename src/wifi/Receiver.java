@@ -17,19 +17,23 @@ public class Receiver implements Runnable {
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
 	private short ourMAC;
-	private AtomicLong clockTime;
+	private AtomicLong localOffset;
 	private HashMap<Short, Integer> incomingSeqNums; // contains most recently used seqNum for ever destination
 
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong clockTime) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset) {
 		this.theRF = theRF;
 		this.incoming = incoming;
 		this.acks = acks;
 		this.cmds = cmds;
 		this.output = output;
 		this.ourMAC = ourMAC;
-		this.clockTime = clockTime;
+		this.localOffset = localOffset;
 		this.incomingSeqNums = new HashMap<Short, Integer>();
+	}
+	
+	private long getLocalTime() {
+		return theRF.clock() + localOffset.get();
 	}
 
 	@Override
@@ -57,10 +61,10 @@ public class Receiver implements Runnable {
 								incomingClockTime |= ((long) (packet.getData()[i] & 0xFF)) << (56 - (8 * i));
 							}
 							incomingClockTime += beaconReceiveOffset;
-							clockTime.set(Math.max(clockTime.get(), incomingClockTime));
+							localOffset.set(Math.max(localOffset.get(), incomingClockTime - theRF.clock()));
 							if (cmds.get(0) != 0) {
 								output.println("Receiver: Received Beacon with time: " + incomingClockTime);
-								output.println("Receiver: Current clock time: " + clockTime.get());
+								output.println("Receiver: Current local offset: " + localOffset.get());
 							}
 						}
 						else {

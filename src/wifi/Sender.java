@@ -25,12 +25,12 @@ public class Sender implements Runnable {
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
 	private short ourMAC;
-	private AtomicLong clockTime;
+	private AtomicLong localOffset;
 	private State myState;
 	
 
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong clockTime) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset) {
 		this.cwSize = RF.aCWmin;
 		this.count = (int) (Math.random() * (cwSize + 1));
 		this.retries = 0;
@@ -40,7 +40,7 @@ public class Sender implements Runnable {
 		this.cmds = cmds;
 		this.output = output;
 		this.ourMAC = ourMAC;
-		this.clockTime = clockTime;
+		this.localOffset = localOffset;
 		this.myState = State.awaitData;
 	}
 
@@ -53,8 +53,8 @@ public class Sender implements Runnable {
 			switch (myState) {
 			case awaitData:
 				//check if beacon timer is over
-				if(System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) {
-					long validClockTime = Math.max(theRF.clock(), clockTime.get()) + beaconSendOffset;
+				if((System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) && cmds.get(2) > 0) {
+					long validClockTime = getLocalTime() + beaconSendOffset;
 					byte[] data = new byte[8];
 					for(int i = 0; i < 8; i++) {
 						data[i] = (byte)(validClockTime >> 56 - (8 * i));
@@ -245,6 +245,10 @@ public class Sender implements Runnable {
 		if (cmds.get(0) != 0) {
 			output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
 		}
+	}
+	
+	private long getLocalTime() {
+		return theRF.clock() + localOffset.get();
 	}
 
 }
