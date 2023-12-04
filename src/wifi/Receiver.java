@@ -45,7 +45,7 @@ public class Receiver implements Runnable {
 				if (packet.isAck()) {
 					// add seqNum of the ack to acks queue
 					acks.add(packet.getSequenceNumber());
-					if (cmds.get(0) != 0) {
+					if (cmds.get(0) == -1) {
 						output.println("Receiver: Received Ack: " + packet);
 					}
 				}
@@ -58,14 +58,14 @@ public class Receiver implements Runnable {
 							}
 							incomingClockTime += beaconReceiveOffset;
 							clockTime.set(Math.max(clockTime.get(), incomingClockTime));
-							if (cmds.get(0) != 0) {
+							if (cmds.get(0) == -1  || cmds.get(0) == -2) {
 								output.println("Receiver: Received Beacon with time: " + incomingClockTime);
-								output.println("Receiver: Current clock time: " + clockTime.get());
+								//output.println("Receiver: Current clock time: " + clockTime.get());
 							}
 						}
 						else {
 							incoming.add(packet);
-							if (cmds.get(0) != 0) {
+							if (cmds.get(0) == -1) {
 								output.println("Receiver: Received Packet: " + packet);
 							}
 						}
@@ -80,7 +80,7 @@ public class Receiver implements Runnable {
 						// Packet is not duplicate queue it
 						if (recvSeq != currSeq) {
 							incoming.add(packet);
-							if (cmds.get(0) != 0) {
+							if (cmds.get(0) == -1) {
 								output.println("Receiver: Received Packet: " + packet);
 							}
 						}
@@ -101,7 +101,7 @@ public class Receiver implements Runnable {
 							Packet ack = new Packet((short) 1, (short) 0, packet.getSequenceNumber(), ourMAC,
 									packet.getSource(), emptyArray, 0);
 							theRF.transmit(ack.getFrame());
-							if (cmds.get(0) != 0) {
+							if (cmds.get(0) == -1) {
 								output.println("Receiver: Ack sent");
 							}
 						}

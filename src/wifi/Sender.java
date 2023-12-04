@@ -13,9 +13,9 @@ public class Sender implements Runnable {
 		awaitData, idleWait, busyDIFSWait, idleDIFSWait, awaitAck, slotWait
 	};
 
-	private static int timeoutTime = 2000;
+	private static int timeoutTime = 2050;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
-	private static long beaconSendOffset = 2465;
+	private static long beaconSendOffset = 2475;
 	private int cwSize;
 	private int count;
 	private int retries;
@@ -61,7 +61,7 @@ public class Sender implements Runnable {
 					}
 					packet = new Packet((short) 2, (short) 0, 0, ourMAC, (short) -1, data, 8);
 					isBroadcast = true;
-					if (cmds.get(0) != 0) {
+					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
 						output.println("Sender: Starting to send Beacon with time: " + validClockTime);
 					}
 					if (!theRF.inUse()) {
@@ -93,13 +93,13 @@ public class Sender implements Runnable {
 				
 				break;
 			case idleDIFSWait:
-				if (cmds.get(0) != 0) {
+				if (cmds.get(0) == -1) {
 					output.println("Sender: Idle DIFS waiting");
 				}
 				sleep(DIFSTime);
 				if (!theRF.inUse()) {
 					theRF.transmit(packet.getFrame());
-					if (cmds.get(0) != 0) {
+					if (cmds.get(0) == -1) {
 						output.println("Sender: Transmited packet: " + packet);
 					}
 					myState = State.awaitAck;
@@ -116,7 +116,7 @@ public class Sender implements Runnable {
 					myState = State.awaitData;
 					break;
 				}
-				if (cmds.get(0) != 0) {
+				if (cmds.get(0) == -1) {
 					output.println("Sender: Awaiting Ack");
 				}
 				long startTime = System.currentTimeMillis();
@@ -128,7 +128,7 @@ public class Sender implements Runnable {
 						if (sequenceNumber == packet.getSequenceNumber()) {
 							// correct ack has been received
 							timeout = false;
-							if (cmds.get(0) != 0) {
+							if (cmds.get(0) == -1) {
 								output.println("Sender: Ack received");
 							}
 							break;
@@ -138,15 +138,15 @@ public class Sender implements Runnable {
 					sleep(20);
 				}
 				if (timeout) {
-					if (cmds.get(0) != 0) {
+					if (cmds.get(0) == -1) {
 						output.println("Sender: Ack not received, timeout");
 					}
 					retries++;
-					if (cmds.get(0) != 0) {
+					if (cmds.get(0) == -1) {
 						output.println("Sender: Retry number set to " + retries);
 					}
 					if (retries > RF.dot11RetryLimit) {
-						if (cmds.get(0) != 0) {
+						if (cmds.get(0) == -1) {
 							output.println("Sender: Retry limit reached");
 						}
 						resetCW();
@@ -161,7 +161,7 @@ public class Sender implements Runnable {
 						else {
 							count = cwSize;
 						}
-						if (cmds.get(0) != 0) {
+						if (cmds.get(0) == -1) {
 							output.println("Sender: Collission window size doubled to " + cwSize + ", Count set to " + count);
 						}
 						myState = State.idleWait;
@@ -180,7 +180,7 @@ public class Sender implements Runnable {
 				myState = State.busyDIFSWait;
 				break;
 			case busyDIFSWait:
-				if (cmds.get(0) != 0) {
+				if (cmds.get(0) == -1) {
 					output.println("Sender: Busy DIFS waiting");
 				}
 				sleep(DIFSTime);
@@ -192,7 +192,7 @@ public class Sender implements Runnable {
 				}
 				break;
 			case slotWait:
-				if (cmds.get(0) != 0) {
+				if (cmds.get(0) == -1) {
 					output.println("Sender: Slot waiting with count " + count);
 				}
 				sleep(RF.aSlotTime);
@@ -208,7 +208,7 @@ public class Sender implements Runnable {
 							packet.setRetryFlag(true);
 						}
 						theRF.transmit(packet.getFrame());
-						if (cmds.get(0) != 0) {
+						if (cmds.get(0) == -1) {
 							output.println("Sender: Transmited packet " + packet);
 						}
 						myState = State.awaitAck;
@@ -216,7 +216,7 @@ public class Sender implements Runnable {
 				}
 				break;
 			default:
-				if (cmds.get(0) != 0) {
+				if (cmds.get(0) == -1) {
 					output.println("Unexpected state!");
 				}
 
@@ -242,7 +242,7 @@ public class Sender implements Runnable {
 			count = cwSize;
 		}
 		
-		if (cmds.get(0) != 0) {
+		if (cmds.get(0) == -1) {
 			output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
 		}
 	}
