@@ -54,7 +54,7 @@ public class Sender implements Runnable {
 			case awaitData:
 				//check if beacon timer is over
 				if((System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) && cmds.get(2) > 0) {
-					long validClockTime = getLocalTime() + beaconSendOffset;
+					long validClockTime = theRF.clock() + beaconSendOffset;
 					byte[] data = new byte[8];
 					for(int i = 0; i < 8; i++) {
 						data[i] = (byte)(validClockTime >> 56 - (8 * i));
@@ -105,7 +105,7 @@ public class Sender implements Runnable {
 					theRF.transmit(packet.getFrame());
 					
 					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
-						//output.println("Sender: Finished transmitting packet at time " + getLocalTime());
+						output.println("Sender: Finished transmitting packet at time " + (theRF.clock() + beaconSendOffset));
 					}
 					myState = State.awaitAck;
 				}

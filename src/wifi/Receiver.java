@@ -10,7 +10,7 @@ import rf.RF;
 
 public class Receiver implements Runnable {
 	
-	private static long beaconReceiveOffset = 0; //time to read packet data
+	private static long beaconReceiveOffset = 0;
 	private RF theRF;
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
@@ -40,10 +40,10 @@ public class Receiver implements Runnable {
 	@Override
 	public void run() {
 		while (true) {
-			if (cmds.get(0) == -1/* || cmds.get(0) == -2*/) {
-				output.println("	Receiver: Received Packet at: " + getLocalTime());
-			}
 			byte[] frame = theRF.receive();
+			if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+				output.println("	Receiver: Received Packet at: " + theRF.clock());
+			}
 			Packet packet = new Packet(frame);
 			short dest = packet.getDest();
 			boolean isBroadcast = dest == (short) -1;
@@ -69,14 +69,14 @@ public class Receiver implements Runnable {
 							}
 							incomingClockTime += beaconReceiveOffset;
 							oldLocalOffset.set(localOffset.get()); //set old offset to current offset before it is updated
-							long timeWhenCompared = getLocalTime();
+							long timeWhenCompared = theRF.clock();
 							localOffset.set(Math.max(localOffset.get(), (incomingClockTime + beaconReceiveOffset) - theRF.clock()));
 							if (cmds.get(0) == -1 || cmds.get(0) == -2) {
 								if(localOffset.get() > oldLocalOffset.get()) {
 									output.println("	Receiver: Local offset increased by " + (localOffset.get() - oldLocalOffset.get()));
 									
 								}
-								//output.println("	Receiver: Received Beacon with time: " + incomingClockTime +" at time: " + timeWhenCompared + " (Diff " + (timeWhenCompared-incomingClockTime) + ")");
+								output.println("	Receiver: Received Beacon with time: " + incomingClockTime +" at time: " + timeWhenCompared + " (Diff " + (timeWhenCompared-incomingClockTime) + ")");
 								//output.println("	Reciever: Local clock offset is now " + (localOffset.get() - oldLocalOffset.get()) + " higher");
 							}
 						}
