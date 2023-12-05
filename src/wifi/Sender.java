@@ -98,10 +98,6 @@ public class Sender implements Runnable {
 				}
 				sleep(DIFSTime);
 				if (!theRF.inUse()) {
-					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
-						//output.println("Sender: Transmitting packet at time " + getLocalTime());
-					}
-					
 					theRF.transmit(packet.getFrame());
 					
 					if (cmds.get(0) == -1 || cmds.get(0) == -2) {

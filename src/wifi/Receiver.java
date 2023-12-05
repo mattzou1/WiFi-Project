@@ -60,9 +60,6 @@ public class Receiver implements Runnable {
 				else {
 					if (isBroadcast) {
 						if (packet.isBeacon()) {
-							if (cmds.get(0) == -1 || cmds.get(0) == -2) {
-								output.println("	Received Beacon at: " + getLocalTime());
-							}
 							long incomingClockTime = 0;
 							for(int i = 0; i < 8; i++) {
 								incomingClockTime |= ((long) (packet.getData()[i] & 0xFF)) << (56 - (8 * i));
@@ -76,9 +73,7 @@ public class Receiver implements Runnable {
 									output.println("	Receiver: Local offset increased by " + (localOffset.get() - oldLocalOffset.get()));
 									
 								}
-								output.println("	Receiver: Received Beacon with time: " + incomingClockTime +" at time: " + timeWhenCompared + " (Diff " + (timeWhenCompared-incomingClockTime) + ")");
-								//output.println("	Reciever: Local clock offset is now " + (localOffset.get() - oldLocalOffset.get()) + " higher");
-							}
+								output.println("	Receiver: Received Beacon with time: " + incomingClockTime +" at time: " + timeWhenCompared + " (Diff " + (timeWhenCompared-incomingClockTime) + ")");							}
 						}
 						else {
 							incoming.add(packet);

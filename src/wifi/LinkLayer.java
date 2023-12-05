@@ -47,7 +47,7 @@ public class LinkLayer implements Dot11Interface {
 		
 		
 		this.cmds.set(2, 5); //Set beacon offset
-		this.cmds.set(0, -2); //set default debug setting
+		this.cmds.set(0, 0); //set default debug setting
 		
 		
 		
@@ -128,7 +128,7 @@ public class LinkLayer implements Dot11Interface {
 	public int command(int cmd, int val) {
 		if (cmd == 0) {
 			output.println("-------------- Commands and Settings -----------------");
-			output.println("Debug level: A value of 0 disables all debugging output, any other value enables it");
+			output.println("Debug level: A value of 0 disables all, -1 enables all and -2 enables beacon debug only");
 			output.println("Current value: " + cmds.get(0) + "\n");
 			output.println(
 					"Slot selection: A value of 0 makes the link layer select slots randomly, any other value makes the link layer always select maxCW");
