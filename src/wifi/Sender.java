@@ -13,7 +13,7 @@ public class Sender implements Runnable {
 		awaitData, idleWait, busyDIFSWait, idleDIFSWait, awaitAck, slotWait
 	};
 
-	private static int timeoutTime = RF.aSlotTime * 7;
+	private static int timeoutTime = RF.aSlotTime * 10;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
 	private static long beaconSendOffset = 2308; //time to create and send packet
 	private int cwSize;
@@ -54,7 +54,7 @@ public class Sender implements Runnable {
 			case awaitData:
 				//check if beacon timer is over
 				if((System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) && cmds.get(2) > 0) {
-					long validClockTime = theRF.clock() + beaconSendOffset;
+					long validClockTime = getLocalTime() + beaconSendOffset;
 					byte[] data = new byte[8];
 					for(int i = 0; i < 8; i++) {
 						data[i] = (byte)(validClockTime >> 56 - (8 * i));
@@ -94,14 +94,18 @@ public class Sender implements Runnable {
 				break;
 			case idleDIFSWait:
 				if (cmds.get(0) == -1) {
-					output.println("Sender: Idle DIFS waiting");
+					output.println("Sender: Idle DIFS waiting starting at " + getLocalTime());
 				}
 				waitDIFS();
+				if (cmds.get(0) == -1) {
+					output.println("Sender: Idle DIFS waiting finished at " + getLocalTime());
+				}
 				if (!theRF.inUse()) {
 					theRF.transmit(packet.getFrame());
 					
 					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
-						output.println("Sender: Finished transmitting packet at time " + (theRF.clock() + beaconSendOffset));
+						output.println("Sender: Transmited packet " + packet);
+						output.println("Sender: Finished transmitting packet at time " + getLocalTime());
 					}
 					myState = State.awaitAck;
 				}
@@ -113,7 +117,9 @@ public class Sender implements Runnable {
 				if (isBroadcast) {
 					resetCW();
 					retries = 0;
-					beaconStartTime = System.currentTimeMillis();
+					if(packet.isBeacon()) {
+						beaconStartTime = System.currentTimeMillis();
+					}
 					myState = State.awaitData;
 					break;
 				}
@@ -182,9 +188,12 @@ public class Sender implements Runnable {
 				break;
 			case busyDIFSWait:
 				if (cmds.get(0) == -1) {
-					output.println("Sender: Busy DIFS waiting");
+					output.println("Sender: Busy DIFS waiting starting at " + getLocalTime());
 				}
 				waitDIFS();
+				if (cmds.get(0) == -1) {
+					output.println("Sender: Busy DIFS waiting finished at " + getLocalTime());
+				}
 				if (theRF.inUse()) {
 					myState = State.idleWait;
 				}
@@ -209,8 +218,9 @@ public class Sender implements Runnable {
 							packet.setRetryFlag(true);
 						}
 						theRF.transmit(packet.getFrame());
-						if (cmds.get(0) == -1) {
+						if (cmds.get(0) == -1 || cmds.get(0) == -2) {
 							output.println("Sender: Transmited packet " + packet);
+							output.println("Sender: Finished transmitting packet at time " + getLocalTime());
 						}
 						myState = State.awaitAck;
 					}
@@ -249,8 +259,8 @@ public class Sender implements Runnable {
 	}
 	
 	private void waitDIFS() {
-		int roundTime = 50 - (int)getLocalTime() % 50;
-		sleep(DIFSTime + roundTime);
+		long roundTime = 50 - getLocalTime() % 50;
+		sleep(DIFSTime + (int)roundTime);
 	}
 	
 	private long getLocalTime() {
