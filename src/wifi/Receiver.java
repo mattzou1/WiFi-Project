@@ -3,6 +3,7 @@ package wifi;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -15,6 +16,7 @@ public class Receiver implements Runnable {
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
+	private AtomicInteger status;
 	private PrintWriter output;
 	private short ourMAC;
 	private AtomicLong localOffset;

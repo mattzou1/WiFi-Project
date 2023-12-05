@@ -2,6 +2,7 @@ package wifi;
 
 import java.io.PrintWriter;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -23,6 +24,7 @@ public class Sender implements Runnable {
 	private ArrayBlockingQueue<Packet> outgoing;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
+	private AtomicInteger status;
 	private PrintWriter output;
 	private short ourMAC;
 	private AtomicLong localOffset;
@@ -135,6 +137,7 @@ public class Sender implements Runnable {
 						if (sequenceNumber == packet.getSequenceNumber()) {
 							// correct ack has been received
 							timeout = false;
+							status.set(4);
 							if (cmds.get(0) == -1) {
 								output.println("Sender: Ack received");
 							}
@@ -156,6 +159,7 @@ public class Sender implements Runnable {
 						if (cmds.get(0) == -1) {
 							output.println("Sender: Retry limit reached");
 						}
+						status.set(5);
 						resetCW();
 						retries = 0;
 						myState = State.awaitData;

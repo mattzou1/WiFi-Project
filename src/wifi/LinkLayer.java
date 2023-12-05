@@ -3,6 +3,7 @@ package wifi;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -23,6 +24,7 @@ public class LinkLayer implements Dot11Interface {
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
+	private AtomicInteger status;
 	private HashMap<Short, Integer> seqNums; //contains most recently used seqNum for ever destination
 	private Sender sender;
 	private Receiver receiver;
@@ -36,7 +38,12 @@ public class LinkLayer implements Dot11Interface {
 	 * @param output Output stream associated with GUI
 	 */
 	public LinkLayer(short ourMAC, PrintWriter output) {
-		theRF = new RF(null, null);
+		try{
+			theRF = new RF(null, null);
+		}
+		catch(Exception e){
+			status.set(3);
+		}
 		this.ourMAC = ourMAC;
 		this.output = output;
 		this.localOffset = new AtomicLong(0);
@@ -59,7 +66,7 @@ public class LinkLayer implements Dot11Interface {
 		if (cmds.get(0) == -1) {
 			output.println("LinkLayer: Constructor ran.");
 		}
-
+		status.set(1);
 	}
 
 	/**
@@ -124,8 +131,7 @@ public class LinkLayer implements Dot11Interface {
 	 * Returns a current status code. See docs for full description.
 	 */
 	public int status() {
-		output.println("LinkLayer: Faking a status() return value of 0");
-		return 0;
+		return status.get();
 	}
 
 	/**
