@@ -162,6 +162,9 @@ public class LinkLayer implements Dot11Interface {
 			cmds.set(2, val);
 			output.println("Beacon interval value: " + val);
 		}
+		else {
+			status.set(9);
+		}
 		return 0;
 	}
 }
