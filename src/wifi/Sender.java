@@ -15,7 +15,7 @@ public class Sender implements Runnable {
 
 	private static int timeoutTime = 2050;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
-	private static long beaconSendOffset = 2475;
+	private static long beaconSendOffset = 2308; //time to create and send packet
 	private int cwSize;
 	private int count;
 	private int retries;
@@ -25,12 +25,12 @@ public class Sender implements Runnable {
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
 	private short ourMAC;
-	private AtomicLong clockTime;
+	private AtomicLong localOffset;
 	private State myState;
 	
 
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong clockTime) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset) {
 		this.cwSize = RF.aCWmin;
 		this.count = (int) (Math.random() * (cwSize + 1));
 		this.retries = 0;
@@ -40,7 +40,7 @@ public class Sender implements Runnable {
 		this.cmds = cmds;
 		this.output = output;
 		this.ourMAC = ourMAC;
-		this.clockTime = clockTime;
+		this.localOffset = localOffset;
 		this.myState = State.awaitData;
 	}
 
@@ -53,8 +53,8 @@ public class Sender implements Runnable {
 			switch (myState) {
 			case awaitData:
 				//check if beacon timer is over
-				if(System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) {
-					long validClockTime = Math.max(theRF.clock(), clockTime.get()) + beaconSendOffset;
+				if((System.currentTimeMillis() - beaconStartTime > cmds.get(2) * 1000) && cmds.get(2) > 0) {
+					long validClockTime = getLocalTime() + beaconSendOffset;
 					byte[] data = new byte[8];
 					for(int i = 0; i < 8; i++) {
 						data[i] = (byte)(validClockTime >> 56 - (8 * i));
@@ -76,7 +76,7 @@ public class Sender implements Runnable {
 				else if (outgoing.size() > 0){
 					packet = outgoing.poll();
 					isBroadcast = packet.getDest() == (short) -1;
-					if (cmds.get(0) != 0) {
+					if (cmds.get(0) == -1) {
 						output.println("Sender: Starting to send Data");
 					}
 					if (!theRF.inUse()) {
@@ -98,9 +98,14 @@ public class Sender implements Runnable {
 				}
 				sleep(DIFSTime);
 				if (!theRF.inUse()) {
+					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+						//output.println("Sender: Transmitting packet at time " + getLocalTime());
+					}
+					
 					theRF.transmit(packet.getFrame());
-					if (cmds.get(0) == -1) {
-						output.println("Sender: Transmited packet: " + packet);
+					
+					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+						//output.println("Sender: Finished transmitting packet at time " + getLocalTime());
 					}
 					myState = State.awaitAck;
 				}
@@ -245,6 +250,10 @@ public class Sender implements Runnable {
 		if (cmds.get(0) == -1) {
 			output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
 		}
+	}
+	
+	private long getLocalTime() {
+		return theRF.clock() + localOffset.get();
 	}
 
 }

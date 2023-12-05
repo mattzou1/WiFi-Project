@@ -18,7 +18,7 @@ public class LinkLayer implements Dot11Interface {
 	private RF theRF; // You'll need one of these eventually
 	private short ourMAC; // Our MAC address
 	private PrintWriter output; // The output stream we'll write to
-	private AtomicLong clockTime;
+	private AtomicLong localOffset;
 	private ArrayBlockingQueue<Packet> outgoing;
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
@@ -39,15 +39,21 @@ public class LinkLayer implements Dot11Interface {
 		theRF = new RF(null, null);
 		this.ourMAC = ourMAC;
 		this.output = output;
-		this.clockTime = new AtomicLong(theRF.clock());
+		this.localOffset = new AtomicLong(0);
 		this.outgoing = new ArrayBlockingQueue<Packet>(10);
 		this.incoming = new ArrayBlockingQueue<Packet>(10);
 		this.acks = new ArrayBlockingQueue<Integer>(10);
 		this.cmds = new AtomicIntegerArray(3);
-		this.cmds.set(2, 3);
+		
+		
+		this.cmds.set(2, 5); //Set beacon offset
+		this.cmds.set(0, -2); //set default debug setting
+		
+		
+		
 		this.seqNums = new HashMap<Short, Integer>();
-		this.sender = new Sender(theRF, outgoing, acks, cmds, output, ourMAC, clockTime);
-		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC, clockTime);
+		this.sender = new Sender(theRF, outgoing, acks, cmds, output, ourMAC, localOffset);
+		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC, localOffset);
 		(new Thread(sender)).start();
 		(new Thread(receiver)).start();
 		if (cmds.get(0) != 0) {

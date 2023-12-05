@@ -10,31 +10,39 @@ import rf.RF;
 
 public class Receiver implements Runnable {
 	
-	private static long beaconReceiveOffset = 953;
+	private static long beaconReceiveOffset = 0; //time to read packet data
 	private RF theRF;
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
 	private PrintWriter output;
 	private short ourMAC;
-	private AtomicLong clockTime;
+	private AtomicLong localOffset;
+	private AtomicLong oldLocalOffset = new AtomicLong(0);
 	private HashMap<Short, Integer> incomingSeqNums; // contains most recently used seqNum for ever destination
 
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong clockTime) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset) {
 		this.theRF = theRF;
 		this.incoming = incoming;
 		this.acks = acks;
 		this.cmds = cmds;
 		this.output = output;
 		this.ourMAC = ourMAC;
-		this.clockTime = clockTime;
+		this.localOffset = localOffset;
 		this.incomingSeqNums = new HashMap<Short, Integer>();
+	}
+	
+	private long getLocalTime() {
+		return theRF.clock() + localOffset.get();
 	}
 
 	@Override
 	public void run() {
 		while (true) {
+			if (cmds.get(0) == -1/* || cmds.get(0) == -2*/) {
+				output.println("	Receiver: Received Packet at: " + getLocalTime());
+			}
 			byte[] frame = theRF.receive();
 			Packet packet = new Packet(frame);
 			short dest = packet.getDest();
@@ -52,21 +60,30 @@ public class Receiver implements Runnable {
 				else {
 					if (isBroadcast) {
 						if (packet.isBeacon()) {
+							if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+								output.println("	Received Beacon at: " + getLocalTime());
+							}
 							long incomingClockTime = 0;
 							for(int i = 0; i < 8; i++) {
 								incomingClockTime |= ((long) (packet.getData()[i] & 0xFF)) << (56 - (8 * i));
 							}
 							incomingClockTime += beaconReceiveOffset;
-							clockTime.set(Math.max(clockTime.get(), incomingClockTime));
-							if (cmds.get(0) == -1  || cmds.get(0) == -2) {
-								output.println("Receiver: Received Beacon with time: " + incomingClockTime);
-								//output.println("Receiver: Current clock time: " + clockTime.get());
+							oldLocalOffset.set(localOffset.get()); //set old offset to current offset before it is updated
+							long timeWhenCompared = getLocalTime();
+							localOffset.set(Math.max(localOffset.get(), (incomingClockTime + beaconReceiveOffset) - theRF.clock()));
+							if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+								if(localOffset.get() > oldLocalOffset.get()) {
+									output.println("	Receiver: Local offset increased by " + (localOffset.get() - oldLocalOffset.get()));
+									
+								}
+								//output.println("	Receiver: Received Beacon with time: " + incomingClockTime +" at time: " + timeWhenCompared + " (Diff " + (timeWhenCompared-incomingClockTime) + ")");
+								//output.println("	Reciever: Local clock offset is now " + (localOffset.get() - oldLocalOffset.get()) + " higher");
 							}
 						}
 						else {
 							incoming.add(packet);
 							if (cmds.get(0) == -1) {
-								output.println("Receiver: Received Packet: " + packet);
+								output.println("	Receiver: Received Packet: " + packet);
 							}
 						}
 
@@ -81,7 +98,7 @@ public class Receiver implements Runnable {
 						if (recvSeq != currSeq) {
 							incoming.add(packet);
 							if (cmds.get(0) == -1) {
-								output.println("Receiver: Received Packet: " + packet);
+								output.println("	Receiver: Received Packet: " + packet);
 							}
 						}
 						// If a seqNum is skipped print err
@@ -94,7 +111,7 @@ public class Receiver implements Runnable {
 							Thread.sleep(RF.aSIFSTime);
 						}
 						catch (InterruptedException e) {
-							System.err.println("Error while putting thread to sleep");
+							System.err.println("	Error while putting thread to sleep");
 						}
 						if (!theRF.inUse()) {
 							byte[] emptyArray = new byte[0];
@@ -102,7 +119,7 @@ public class Receiver implements Runnable {
 									packet.getSource(), emptyArray, 0);
 							theRF.transmit(ack.getFrame());
 							if (cmds.get(0) == -1) {
-								output.println("Receiver: Ack sent");
+								output.println("	Receiver: Ack sent");
 							}
 						}
 					}
