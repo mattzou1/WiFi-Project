@@ -61,14 +61,17 @@ public class Receiver implements Runnable {
 					for (int i = 0; i < 8; i++) {
 						incomingClockTime |= ((long) (packet.getData()[i] & 0xFF)) << (56 - (8 * i));
 					}
+					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+						output.println("	Receiver: Beacon received with clock time of: " + incomingClockTime);
+					}
 					incomingClockTime += beaconReceiveOffset;
 					long timeWhenCompared = theRF.clock();
 					if (incomingClockTime > getLocalTime()) {
 						localOffset.set(incomingClockTime - theRF.clock());
 					}
 					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
-						output.println("	Receiver: Received Beacon with time: " + incomingClockTime + " at time: "
-								+ timeWhenCompared + " localOffset: " + localOffset.get());
+						output.println("	Receiver: Processed beacon at time: " + timeWhenCompared
+								+ "\n	Local offset : " + localOffset.get());
 					}
 				}
 				else if (incoming.size() <= 4) {
