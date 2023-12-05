@@ -13,7 +13,7 @@ public class Sender implements Runnable {
 		awaitData, idleWait, busyDIFSWait, idleDIFSWait, awaitAck, slotWait
 	};
 
-	private static int timeoutTime = 2050;
+	private static int timeoutTime = RF.aSlotTime * 7;
 	private static int DIFSTime = RF.aSIFSTime + 2 * RF.aSlotTime;
 	private static long beaconSendOffset = 2308; //time to create and send packet
 	private int cwSize;
@@ -96,7 +96,7 @@ public class Sender implements Runnable {
 				if (cmds.get(0) == -1) {
 					output.println("Sender: Idle DIFS waiting");
 				}
-				sleep(DIFSTime);
+				waitDIFS();
 				if (!theRF.inUse()) {
 					theRF.transmit(packet.getFrame());
 					
@@ -184,7 +184,7 @@ public class Sender implements Runnable {
 				if (cmds.get(0) == -1) {
 					output.println("Sender: Busy DIFS waiting");
 				}
-				sleep(DIFSTime);
+				waitDIFS();
 				if (theRF.inUse()) {
 					myState = State.idleWait;
 				}
@@ -246,6 +246,11 @@ public class Sender implements Runnable {
 		if (cmds.get(0) == -1) {
 			output.println("Sender: Collission window size set to " + cwSize + ", Count set to " + count);
 		}
+	}
+	
+	private void waitDIFS() {
+		int roundTime = 50 - (int)getLocalTime() % 50;
+		sleep(DIFSTime + roundTime);
 	}
 	
 	private long getLocalTime() {

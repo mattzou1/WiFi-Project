@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import rf.RF;
 
 public class Receiver implements Runnable {
-	
+
 	private static long beaconReceiveOffset = 0;
 	private RF theRF;
 	private ArrayBlockingQueue<Packet> incoming;
@@ -18,7 +18,6 @@ public class Receiver implements Runnable {
 	private PrintWriter output;
 	private short ourMAC;
 	private AtomicLong localOffset;
-	private AtomicLong oldLocalOffset = new AtomicLong(0);
 	private HashMap<Short, Integer> incomingSeqNums; // contains most recently used seqNum for ever destination
 
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
@@ -32,7 +31,7 @@ public class Receiver implements Runnable {
 		this.localOffset = localOffset;
 		this.incomingSeqNums = new HashMap<Short, Integer>();
 	}
-	
+
 	private long getLocalTime() {
 		return theRF.clock() + localOffset.get();
 	}
@@ -57,31 +56,27 @@ public class Receiver implements Runnable {
 						output.println("Receiver: Received Ack: " + packet);
 					}
 				}
-				else {
+				else if (isBroadcast && packet.isBeacon()) {
+					long incomingClockTime = 0;
+					for (int i = 0; i < 8; i++) {
+						incomingClockTime |= ((long) (packet.getData()[i] & 0xFF)) << (56 - (8 * i));
+					}
+					incomingClockTime += beaconReceiveOffset;
+					long timeWhenCompared = theRF.clock();
+					if (incomingClockTime > getLocalTime()) {
+						localOffset.set(incomingClockTime - theRF.clock());
+					}
+					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
+						output.println("	Receiver: Received Beacon with time: " + incomingClockTime + " at time: "
+								+ timeWhenCompared + " localOffset: " + localOffset.get());
+					}
+				}
+				else if (incoming.size() <= 4) {
 					if (isBroadcast) {
-						if (packet.isBeacon()) {
-							long incomingClockTime = 0;
-							for(int i = 0; i < 8; i++) {
-								incomingClockTime |= ((long) (packet.getData()[i] & 0xFF)) << (56 - (8 * i));
-							}
-							incomingClockTime += beaconReceiveOffset;
-							oldLocalOffset.set(localOffset.get()); //set old offset to current offset before it is updated
-							long timeWhenCompared = theRF.clock();
-							localOffset.set(Math.max(localOffset.get(), (incomingClockTime + beaconReceiveOffset) - theRF.clock()));
-							if (cmds.get(0) == -1 || cmds.get(0) == -2) {
-								if(localOffset.get() > oldLocalOffset.get()) {
-									output.println("	Receiver: Local offset increased by " + (localOffset.get() - oldLocalOffset.get()));
-									
-								}
-								output.println("	Receiver: Received Beacon with time: " + incomingClockTime +" at time: " + timeWhenCompared + " (Diff " + (timeWhenCompared-incomingClockTime) + ")");							}
+						incoming.add(packet);
+						if (cmds.get(0) == -1) {
+							output.println("	Receiver: Received Packet: " + packet);
 						}
-						else {
-							incoming.add(packet);
-							if (cmds.get(0) == -1) {
-								output.println("	Receiver: Received Packet: " + packet);
-							}
-						}
-
 					}
 					else {
 						int recvSeq = packet.getSequenceNumber();
@@ -119,6 +114,11 @@ public class Receiver implements Runnable {
 						}
 					}
 
+				}
+				else {
+					if (cmds.get(0) == -1) {
+						output.println("Receiver: Incoming Queue size limit reached");
+					}
 				}
 			}
 

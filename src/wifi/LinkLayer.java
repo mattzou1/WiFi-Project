@@ -56,7 +56,7 @@ public class LinkLayer implements Dot11Interface {
 		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC, localOffset);
 		(new Thread(sender)).start();
 		(new Thread(receiver)).start();
-		if (cmds.get(0) != 0) {
+		if (cmds.get(0) == -1) {
 			output.println("LinkLayer: Constructor ran.");
 		}
 
@@ -67,6 +67,12 @@ public class LinkLayer implements Dot11Interface {
 	 * bytes to send. See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
+		if(outgoing.size() >= 4) {
+			if (cmds.get(0) == -1) {
+				output.println("LinkLayer: Outgoing Queue size limit reached");
+			}
+			return 0;
+		}
 		int seqNum = 0;
 		if(seqNums.containsKey(dest)) {
 			//dest is in hashmap, increment most recently used seqNum
@@ -79,7 +85,7 @@ public class LinkLayer implements Dot11Interface {
 		}	
 		Packet packet = new Packet((short) 0, (short) 0, seqNum, ourMAC, dest, data, len);
 		outgoing.add(packet);
-		if (cmds.get(0) != 0) {
+		if (cmds.get(0) == -1) {
 			output.println("LinkLayer: Sending " + len + " bytes to " + dest);
 		}
 		return len;
@@ -90,7 +96,7 @@ public class LinkLayer implements Dot11Interface {
 	 * the Transmission object. See docs for full description.
 	 */
 	public int recv(Transmission t) {
-		if (cmds.get(0) != 0) {
+		if (cmds.get(0) == -1) {
 			output.println("LinkLayer: Waiting for data...");
 		}
 
