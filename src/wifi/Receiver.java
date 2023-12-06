@@ -9,6 +9,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import rf.RF;
 
+/**
+ * A thread class that looks for incoming packets on the RF layer and handles them accordingly. Sends ACKS for those received packets.
+ * 
+ * @version 23.12.6
+ * @author Matthew Zou, David Lybeck
+ */
 public class Receiver implements Runnable {
 
 	private static long beaconReceiveOffset = 0;
@@ -22,6 +28,18 @@ public class Receiver implements Runnable {
 	private AtomicInteger status;
 	private HashMap<Short, Integer> incomingSeqNums; // contains most recently used seqNum for ever destination
 
+	
+	/**
+	 * Creates a receiver
+	 * @param theRF RF
+	 * @param incoming ArrayBlockingQueue<Packet>
+	 * @param acks ArrayBlockingQueue<Integer>
+	 * @param cmds AtomicIntegerArray cmds
+	 * @param output PrintWriter
+	 * @param ourMAC short
+	 * @param localOffset AtomicLong
+	 * @param status AtomicInteger
+	 */
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
 			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset, AtomicInteger status) {
 		this.theRF = theRF;
@@ -35,10 +53,17 @@ public class Receiver implements Runnable {
 		this.incomingSeqNums = new HashMap<Short, Integer>();
 	}
 
+	/**
+	 * gets the local time (including the offset from beacons)
+	 * @return
+	 */
 	private long getLocalTime() {
 		return theRF.clock() + localOffset.get();
 	}
 
+	/**
+	 * starts the reciever
+	 */
 	@Override
 	public void run() {
 		while (true) {
@@ -107,6 +132,7 @@ public class Receiver implements Runnable {
 							Thread.sleep(RF.aSIFSTime);
 						}
 						catch (InterruptedException e) {
+							status.set(2);
 							System.err.println("	Error while putting thread to sleep");
 						}
 						if (!theRF.inUse()) {

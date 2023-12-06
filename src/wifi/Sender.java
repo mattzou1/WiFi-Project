@@ -8,8 +8,17 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import rf.RF;
 
+/**
+ * A tread class that takes the packet off the outgoing queue and transmits it to the RF layer. Based off of 802.11 rules
+ * 
+ * @version 23.12.6
+ * @author Matthew Zou, David Lybeck
+ */
 public class Sender implements Runnable {
 
+	/**
+	 * creates all the states sender can be in
+	 */
 	public enum State {
 		awaitData, idleWait, busyDIFSWait, idleDIFSWait, awaitAck, slotWait
 	};
@@ -31,6 +40,17 @@ public class Sender implements Runnable {
 	private State myState;
 	
 
+	/**
+	 * Constructor for sender
+	 * @param theRF RF
+	 * @param outgoing ArrayBlockingQueue<Packet>
+	 * @param acks ArrayBlockingQueue<Integer>
+	 * @param cmds AtomicIntegerArray
+	 * @param output PrintWriter
+	 * @param ourMAC short
+	 * @param localOffset AtomicLong
+	 * @param status AtomicIntege
+	 */
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
 			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset, AtomicInteger status) {
 		this.cwSize = RF.aCWmin;
@@ -47,6 +67,9 @@ public class Sender implements Runnable {
 		this.myState = State.awaitData;
 	}
 
+	/**
+	 * Starts the sender class
+	 */
 	@Override
 	public void run() {
 		Packet packet = null;
@@ -240,6 +263,10 @@ public class Sender implements Runnable {
 		}
 	}
 
+	/**
+	 * puts the sender thread to sleep
+	 * @param time int
+	 */
 	private void sleep(int time) {
 		try {
 			Thread.sleep(time);
@@ -249,6 +276,9 @@ public class Sender implements Runnable {
 		}
 	}
 
+	/**
+	 * Resets the collision window in the sender
+	 */
 	private void resetCW() {
 		cwSize = RF.aCWmin;
 		if(cmds.get(1) == 0) {
@@ -263,11 +293,18 @@ public class Sender implements Runnable {
 		}
 	}
 	
+	/**
+	 * Waits the amount of time given is DIFSTime constant
+	 */
 	private void waitDIFS() {
 		long roundTime = 50 - getLocalTime() % 50;
 		sleep(DIFSTime + (int)roundTime);
 	}
 	
+	/**
+	 * gets the local time inclusing the offset from beacons
+	 * @return time long
+	 */
 	private long getLocalTime() {
 		return theRF.clock() + localOffset.get();
 	}

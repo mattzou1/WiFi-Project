@@ -13,7 +13,7 @@ import rf.RF;
  * Use this layer as a starting point for your project code. See
  * {@link Dot11Interface} for more details on these routines.
  * 
- * @author richards
+ * @author richards, Matthew Zou, David Lybeck
  */
 public class LinkLayer implements Dot11Interface {
 	private RF theRF; // You'll need one of these eventually
@@ -75,6 +75,14 @@ public class LinkLayer implements Dot11Interface {
 	 * bytes to send. See docs for full description.
 	 */
 	public int send(short dest, byte[] data, int len) {
+		if(len < 0) {
+			status.set(6);
+			return 0;
+		}
+		if(data == null) {
+			status.set(7);
+			return 0;
+		}
 		if(outgoing.size() >= 4) {
 			if (cmds.get(0) == -1) {
 				output.println("LinkLayer: Outgoing Queue size limit reached");
@@ -115,6 +123,7 @@ public class LinkLayer implements Dot11Interface {
 				Thread.sleep(20); // Sleep for 20 milliseconds
 			}
 			catch (InterruptedException e) {
+				status.set(2);
 				System.err.println("Error while putting thread to sleep");
 			}
 		}
