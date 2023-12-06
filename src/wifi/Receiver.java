@@ -16,14 +16,14 @@ public class Receiver implements Runnable {
 	private ArrayBlockingQueue<Packet> incoming;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
-	private AtomicInteger status;
 	private PrintWriter output;
 	private short ourMAC;
 	private AtomicLong localOffset;
+	private AtomicInteger status;
 	private HashMap<Short, Integer> incomingSeqNums; // contains most recently used seqNum for ever destination
 
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset, AtomicInteger status) {
 		this.theRF = theRF;
 		this.incoming = incoming;
 		this.acks = acks;
@@ -31,6 +31,7 @@ public class Receiver implements Runnable {
 		this.output = output;
 		this.ourMAC = ourMAC;
 		this.localOffset = localOffset;
+		this.status = status;
 		this.incomingSeqNums = new HashMap<Short, Integer>();
 	}
 

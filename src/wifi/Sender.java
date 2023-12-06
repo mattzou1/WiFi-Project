@@ -24,15 +24,15 @@ public class Sender implements Runnable {
 	private ArrayBlockingQueue<Packet> outgoing;
 	private ArrayBlockingQueue<Integer> acks;
 	private AtomicIntegerArray cmds;
-	private AtomicInteger status;
 	private PrintWriter output;
 	private short ourMAC;
 	private AtomicLong localOffset;
+	private AtomicInteger status;
 	private State myState;
 	
 
 	public Sender(RF theRF, ArrayBlockingQueue<Packet> outgoing, ArrayBlockingQueue<Integer> acks,
-			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset) {
+			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset, AtomicInteger status) {
 		this.cwSize = RF.aCWmin;
 		this.count = (int) (Math.random() * (cwSize + 1));
 		this.retries = 0;
@@ -43,6 +43,7 @@ public class Sender implements Runnable {
 		this.output = output;
 		this.ourMAC = ourMAC;
 		this.localOffset = localOffset;
+		this.status = status;
 		this.myState = State.awaitData;
 	}
 

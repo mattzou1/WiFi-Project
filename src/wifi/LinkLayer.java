@@ -38,6 +38,7 @@ public class LinkLayer implements Dot11Interface {
 	 * @param output Output stream associated with GUI
 	 */
 	public LinkLayer(short ourMAC, PrintWriter output) {
+		this.status = new AtomicInteger(0);
 		try{
 			theRF = new RF(null, null);
 		}
@@ -59,8 +60,8 @@ public class LinkLayer implements Dot11Interface {
 		
 		
 		this.seqNums = new HashMap<Short, Integer>();
-		this.sender = new Sender(theRF, outgoing, acks, cmds, output, ourMAC, localOffset);
-		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC, localOffset);
+		this.sender = new Sender(theRF, outgoing, acks, cmds, output, ourMAC, localOffset, status);
+		this.receiver = new Receiver(theRF, incoming, acks, cmds, output, ourMAC, localOffset, status);
 		(new Thread(sender)).start();
 		(new Thread(receiver)).start();
 		if (cmds.get(0) == -1) {
@@ -78,6 +79,7 @@ public class LinkLayer implements Dot11Interface {
 			if (cmds.get(0) == -1) {
 				output.println("LinkLayer: Outgoing Queue size limit reached");
 			}
+			status.set(10);
 			return 0;
 		}
 		int seqNum = 0;
