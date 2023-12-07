@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import rf.RF;
 
 /**
- * A thread class that looks for incoming packets on the RF layer and handles them accordingly. Sends ACKS for those received packets.
+ * A thread class that looks for incoming packets on the RF layer and handles
+ * them accordingly. Sends ACKS for those received packets.
  * 
  * @version 23.12.6
  * @author Matthew Zou, David Lybeck
@@ -28,17 +29,17 @@ public class Receiver implements Runnable {
 	private AtomicInteger status;
 	private HashMap<Short, Integer> incomingSeqNums; // contains most recently used seqNum for ever destination
 
-	
 	/**
 	 * Creates a receiver
-	 * @param theRF RF
-	 * @param incoming ArrayBlockingQueue<Packet>
-	 * @param acks ArrayBlockingQueue<Integer>
-	 * @param cmds AtomicIntegerArray cmds
-	 * @param output PrintWriter
-	 * @param ourMAC short
+	 * 
+	 * @param theRF       RF
+	 * @param incoming    ArrayBlockingQueue<Packet>
+	 * @param acks        ArrayBlockingQueue<Integer>
+	 * @param cmds        AtomicIntegerArray cmds
+	 * @param output      PrintWriter
+	 * @param ourMAC      short
 	 * @param localOffset AtomicLong
-	 * @param status AtomicInteger
+	 * @param status      AtomicInteger
 	 */
 	public Receiver(RF theRF, ArrayBlockingQueue<Packet> incoming, ArrayBlockingQueue<Integer> acks,
 			AtomicIntegerArray cmds, PrintWriter output, short ourMAC, AtomicLong localOffset, AtomicInteger status) {
@@ -55,6 +56,7 @@ public class Receiver implements Runnable {
 
 	/**
 	 * gets the local time (including the offset from beacons)
+	 * 
 	 * @return
 	 */
 	private long getLocalTime() {
@@ -75,8 +77,9 @@ public class Receiver implements Runnable {
 			short dest = packet.getDest();
 			boolean isBroadcast = dest == (short) -1;
 
-			// check if packet's destination is for us
+			// check if packet's destination is for us and checksum
 			if ((packet.getDest() == ourMAC || isBroadcast) && packet.isValid()) {
+				// check if packet is ack
 				if (packet.isAck()) {
 					// add seqNum of the ack to acks queue
 					acks.add(packet.getSequenceNumber());
@@ -84,6 +87,7 @@ public class Receiver implements Runnable {
 						output.println("Receiver: Received Ack: " + packet);
 					}
 				}
+				// check if packet is a beacon
 				else if (isBroadcast && packet.isBeacon()) {
 					long incomingClockTime = 0;
 					for (int i = 0; i < 8; i++) {
@@ -100,15 +104,19 @@ public class Receiver implements Runnable {
 					if (cmds.get(0) == -1 || cmds.get(0) == -2) {
 						output.println("	Receiver: Processed beacon at time: " + timeWhenCompared
 								+ "\n	Local offset : " + localOffset.get());
+						output.println("	Receiver: Local Time: " + getLocalTime());
 					}
 				}
+				// check if incoming queue is full
 				else if (incoming.size() <= 4) {
+					// if its a broadcast add to incoming queue
 					if (isBroadcast) {
 						incoming.add(packet);
 						if (cmds.get(0) == -1) {
-							output.println("	Receiver: Received Packet: " + packet);
+							output.println("	Receiver: Received Broadcast: " + packet);
 						}
 					}
+					// not a broadcast
 					else {
 						int recvSeq = packet.getSequenceNumber();
 						int currSeq = -1;
@@ -119,7 +127,7 @@ public class Receiver implements Runnable {
 						if (recvSeq != currSeq) {
 							incoming.add(packet);
 							if (cmds.get(0) == -1) {
-								output.println("	Receiver: Received Packet: " + packet);
+								output.println("	Receiver: Received Message: " + packet);
 							}
 						}
 						// If a seqNum is skipped print err
@@ -144,12 +152,29 @@ public class Receiver implements Runnable {
 								output.println("	Receiver: Ack sent");
 							}
 						}
+						else {
+							if (cmds.get(0) == -1) {
+								output.println("	Receiver: Couldn't send Ack!!");
+							}
+						}
 					}
 
 				}
 				else {
 					if (cmds.get(0) == -1) {
-						output.println("Receiver: Incoming Queue size limit reached");
+						output.println("	Receiver: Incoming Queue size limit reached");
+					}
+				}
+			}
+			else {
+				if(!packet.isValid()) {
+					if (cmds.get(0) == -1) {
+						output.println("	Receiver: Checksum failed");
+					}
+				}
+				if(!(packet.getDest() == ourMAC || isBroadcast)) {
+					if (cmds.get(0) == -1) {
+						output.println("	Receiver: Wrong Destination");
 					}
 				}
 			}

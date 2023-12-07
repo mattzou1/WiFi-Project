@@ -5,7 +5,8 @@ import java.util.zip.CRC32;
 import rf.RF;
 
 /**
- * Stores data surrounded by a frame used out our 802.11 implementation. Contains bitwise operations to extract and edit data within the packet
+ * Stores data surrounded by a frame used out our 802.11 implementation.
+ * Contains bitwise operations to extract and edit data within the packet
  * 
  * @version 23.12.6
  * @author Matthew Zou, David Lybeck
@@ -17,6 +18,7 @@ public class Packet {
 
 	/**
 	 * Creates a packet fiven a byte[] frame
+	 * 
 	 * @param frame byte[]
 	 */
 	public Packet(byte[] frame) {
@@ -26,19 +28,21 @@ public class Packet {
 
 	/**
 	 * Packet created with all given parameters
-	 * @param frameType short
-	 * @param retryFlag short
+	 * 
+	 * @param frameType      short
+	 * @param retryFlag      short
 	 * @param sequenceNumber int
-	 * @param ourMac short
-	 * @param dest short
-	 * @param data byte[]
-	 * @param len int
+	 * @param ourMac         short
+	 * @param dest           short
+	 * @param data           byte[]
+	 * @param len            int
 	 */
 	public Packet(short frameType, short retryFlag, int sequenceNumber, short ourMac, short dest, byte[] data,
 			int len) {
-		//use len bytes or f len exceeds the size of the byte array, send as many bytes as data contains
+		// use len bytes or f len exceeds the size of the byte array, send as many bytes
+		// as data contains
 		this.dataLength = Math.min(len, data.length);
-		//use a max of 2038 bytes of data
+		// use a max of 2038 bytes of data
 		this.dataLength = Math.min(this.dataLength, RF.aMPDUMaximumLength - 10);
 		this.frame = new byte[dataLength + 10];
 
@@ -62,7 +66,7 @@ public class Packet {
 			frame[i + 6] = data[i];
 		}
 		// CRC bytes
-		int crc = calculateCRC(frame, 0, dataLength + 6); 
+		int crc = calculateCRC(frame, 0, dataLength + 6);
 		frame[dataLength + 6] = (byte) ((crc >> 24) & 0xFF);
 		frame[dataLength + 7] = (byte) ((crc >> 16) & 0xFF);
 		frame[dataLength + 8] = (byte) ((crc >> 8) & 0xFF);
@@ -71,6 +75,7 @@ public class Packet {
 
 	/**
 	 * Gets the destination of the packet as a short
+	 * 
 	 * @return destination short
 	 */
 	public short getDest() {
@@ -79,6 +84,7 @@ public class Packet {
 
 	/**
 	 * gets the source from the packet as a short
+	 * 
 	 * @return source short
 	 */
 	public short getSource() {
@@ -87,6 +93,7 @@ public class Packet {
 
 	/**
 	 * gets the data from the packet as a byte[]
+	 * 
 	 * @return data byte[]
 	 */
 	public byte[] getData() {
@@ -99,6 +106,7 @@ public class Packet {
 
 	/**
 	 * gets the length of the data from the packet
+	 * 
 	 * @return length int
 	 */
 	public int getDataLength() {
@@ -107,6 +115,7 @@ public class Packet {
 
 	/**
 	 * gets the everything from the packet
+	 * 
 	 * @return frame byte[]
 	 */
 	public byte[] getFrame() {
@@ -115,15 +124,17 @@ public class Packet {
 
 	/**
 	 * checks if the packet is an ack packet
+	 * 
 	 * @return true if it is an ack
 	 */
 	public boolean isAck() {
 		short frameType = (short) ((frame[0] >> 5) & 0x07);
 		return frameType == 1;
 	}
-	
+
 	/**
 	 * checks if the packet is a beacon
+	 * 
 	 * @return true if the packet is a beacon
 	 */
 	public boolean isBeacon() {
@@ -133,6 +144,7 @@ public class Packet {
 
 	/**
 	 * gets the sequence number of the packet
+	 * 
 	 * @return sequence number int
 	 */
 	public int getSequenceNumber() {
@@ -140,29 +152,34 @@ public class Packet {
 		int sequenceNumber = controlBytes & 0x0FFF;
 		return sequenceNumber;
 	}
-	
+
 	/**
 	 * sets the retry flag for this packet
+	 * 
 	 * @param isRetry boolean
 	 */
 	public void setRetryFlag(boolean isRetry) {
 		if (isRetry) {
-	        frame[0] |= (1 << 4);
-	    }
+			frame[0] |= (1 << 4);
+		}
+		// recalculate crc
+		int crc = calculateCRC(frame, 0, dataLength + 6);
+		frame[dataLength + 6] = (byte) ((crc >> 24) & 0xFF);
+		frame[dataLength + 7] = (byte) ((crc >> 16) & 0xFF);
+		frame[dataLength + 8] = (byte) ((crc >> 8) & 0xFF);
+		frame[dataLength + 9] = (byte) (crc & 0xFF);
 	}
-	
+
 	/**
 	 * checks the packet using checksums
+	 * 
 	 * @return true if it is a valid packet
 	 */
 	public boolean isValid() {
-		int crc = calculateCRC(frame, 0, dataLength + 6); 
-		int frameCrc =
-			    ((frame[dataLength + 6] & 0xFF) << 24) |
-			    ((frame[dataLength + 7] & 0xFF) << 16) |
-			    ((frame[dataLength + 8] & 0xFF) << 8) |
-			    (frame[dataLength + 9] & 0xFF);
-		if(crc == frameCrc) {
+		int crc = calculateCRC(frame, 0, dataLength + 6);
+		int frameCrc = ((frame[dataLength + 6] & 0xFF) << 24) | ((frame[dataLength + 7] & 0xFF) << 16)
+				| ((frame[dataLength + 8] & 0xFF) << 8) | (frame[dataLength + 9] & 0xFF);
+		if (crc == frameCrc) {
 			return true;
 		}
 		return false;
@@ -170,6 +187,7 @@ public class Packet {
 
 	/**
 	 * toString method for the packet class
+	 * 
 	 * @return String
 	 */
 	@Override
@@ -182,18 +200,19 @@ public class Packet {
 		sb.append(" ]");
 		return sb.toString();
 	}
-	
+
 	/**
 	 * Calculates the checksum for the packet
-	 * @param data byte[]
-	 * @param start int
+	 * 
+	 * @param data   byte[]
+	 * @param start  int
 	 * @param length int
 	 * @return checksum int
 	 */
 	private int calculateCRC(byte[] data, int start, int length) {
 		CRC32 crc32 = new CRC32();
-        crc32.update(data, start, length);
-        return (int) crc32.getValue();
+		crc32.update(data, start, length);
+		return (int) crc32.getValue();
 	}
 
 }
