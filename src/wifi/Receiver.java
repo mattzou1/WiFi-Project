@@ -129,10 +129,12 @@ public class Receiver implements Runnable {
 							if (cmds.get(0) == -1) {
 								output.println("	Receiver: Received Message: " + packet);
 							}
+							// If a seqNum is skipped print err
+							if (recvSeq != currSeq + 1){
+								output.println("Out of Order Sequence Number");
+							}
 						}
-						// If a seqNum is skipped print err
-						if (recvSeq != currSeq + 1)
-							output.println("Out of Order Sequence Number");
+						
 						// place new seqNum into hashmap of all received seqNums
 						incomingSeqNums.put(dest, recvSeq);
 						// if packet is not a broadcast, wait SIFS and send an ack;
